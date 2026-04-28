@@ -94,7 +94,9 @@ This file is the single source of truth for that service in the project. Future 
 ## Routing
 - **ShieldNode base URL**: https://proxy.shieldnode.app
 - **Original API base URL** (set in ShieldNode service config): https://api.example.com/v1
-- **Auth header for proxy calls**: `X-Api-Key: sk_live_...`
+- **Auth header for proxy calls**: `X-Api-Key: $SHIELDNODE_<SERVICE>_KEY`
+  > **Never** write the actual key value in this file. Reference the env variable only.
+  > Loaded from `.env` (variable name: `SHIELDNODE_<SERVICE>_KEY`).
 - **Effective call pattern**: `https://proxy.shieldnode.app/<endpoint-path>`
   > Because the configured base URL already includes `/v1`, the path appended to the proxy is just the endpoint (no `/v1` prefix).
 
@@ -133,6 +135,50 @@ When the agent does not know the API's endpoints:
 If the user pastes raw doc content instead of a URL, parse that directly — same outcome.
 
 If the documentation is gated/auth-walled and `WebFetch` fails, ask the user to paste the relevant page content into the chat.
+
+### Storing the virtual key
+
+The `.md` reference doc is designed to be committable. The virtual key value is **never** written into it — only the name of the env variable that holds it.
+
+After the user has the key (shown once at creation in the dashboard), the agent must wire the env var properly. Pick the env var name with the convention `SHIELDNODE_<SERVICE>_KEY` in uppercase (e.g. `SHIELDNODE_STRIPE_KEY`).
+
+Steps:
+
+1. **Check if `.env` exists at the project root.**
+   - If yes, append the new variable. Do not overwrite existing entries.
+   - If no, create it with a header comment.
+
+   ```env
+   # ShieldNode virtual keys — never commit this file.
+   SHIELDNODE_STRIPE_KEY=sk_live_...
+   ```
+
+2. **Update `.env.example`** (create if missing) with the same key, value blanked out:
+
+   ```env
+   SHIELDNODE_STRIPE_KEY=
+   ```
+
+   This file *is* committable and documents the required variables for collaborators.
+
+3. **Verify `.gitignore` excludes `.env`.** If `.env` is not gitignored, append:
+
+   ```
+   .env
+   .env.local
+   ```
+
+   Do not touch other gitignore entries.
+
+4. **In the per-service `.md`**, reference the variable by name only:
+
+   ```
+   - **Auth header for proxy calls**: `X-Api-Key: $SHIELDNODE_STRIPE_KEY`
+   ```
+
+5. **Confirm to the user**: tell them what was created/changed and remind them that the key value is shown only once at creation — they must paste it into `.env` themselves immediately.
+
+The agent must **never** ask the user to paste the key into the chat. The user pastes it directly into `.env` on their machine. If the user pastes a key into the chat anyway (mistake), the agent must redact it in subsequent turns and remind the user to rotate the key in the dashboard if it appeared in any logs.
 
 ---
 
@@ -237,6 +283,8 @@ If the user reports unexpected `404`s, this is almost always the cause. Verify t
 - Real upstream credentials are encrypted at rest and never returned to clients.
 - A leaked virtual key → disable it in the dashboard (Redis invalidation < 1s).
 - Never paste a virtual key into public code, public logs, or chat history. The agent must redact them when echoing user input.
+- **The per-service `.md` doc is committable. The key value never goes in it.** Only the env var name is referenced. The actual value lives in `.env` (gitignored). See [Storing the virtual key](#storing-the-virtual-key).
+- The agent must never ask the user to paste a key into the chat. The user pastes it directly into `.env` on their machine. If a key ends up in chat history by mistake, treat it as compromised and tell the user to rotate it.
 
 ---
 
