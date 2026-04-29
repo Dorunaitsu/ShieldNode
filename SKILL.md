@@ -56,6 +56,8 @@ Use when Auto fails, or when you want to force a specific auth method.
    - **Query Param** → `?api_key=<value>`. Leave the field empty to let the proxy try common parameter names.
 3. Test → save.
 
+> **Known limitation — multi-header auth**: some enterprise APIs (banking, shipping carriers like DHL/FedEx, certain B2B SaaS) require two or more headers simultaneously, e.g. `Client-Id: abc` **and** `Client-Secret: xyz`. The proxy backend supports this case (`multi_header` mode), but the dashboard UI does not currently expose a configuration panel for it. If your target API requires this, open an issue on the [skill repo](https://github.com/RP0-undefined/shieldnode-skill/issues) so we can prioritise UI support.
+
 ### Option C — AI Configurator
 
 Use when the API is unfamiliar and the user has the doc URL.
