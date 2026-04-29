@@ -314,12 +314,35 @@ A 1010 block always shows the literal string `error code: 1010` in the body. If 
 
 ## 5. Security rules
 
+### Rules the agent itself must follow
 - Virtual keys (`sk_live_...`) travel **only** in the `X-Api-Key` header — never in the URL.
 - Real upstream credentials are encrypted at rest and never returned to clients.
 - A leaked virtual key → disable it in the dashboard (Redis invalidation < 1s).
 - Never paste a virtual key into public code, public logs, or chat history. The agent must redact them when echoing user input.
 - **The per-service `.md` doc is committable. The key value never goes in it.** Only the env var name is referenced. The actual value lives in `.env` (gitignored). See [Storing the virtual key](#storing-the-virtual-key).
-- The agent must never ask the user to paste a key into the chat. The user pastes it directly into `.env` on their machine. If a key ends up in chat history by mistake, treat it as compromised and tell the user to rotate it.
+- **Prefer not to ask the user to paste a key into chat history when there's a better channel.** `.env`, password managers, or platform secret stores are safer.
+- **However, many agents are chat-only** (Telegram bots, web chat assistants, voice assistants, no-code automation) and have no file system to drop a `.env` into. For those, the user has no choice but to share the key in the conversation, and that is **not automatically a security incident**. In that case, do not jump to "rotate immediately". Instead, recommend the user constrain the key with ShieldNode's controls:
+  - lower the rate limit (req/min) on the key,
+  - cap the spending budget,
+  - set a short expiration date,
+  - **disable the key in the dashboard or mobile app the moment the chat session ends**.
+- Rotation is the right response only when the chat history is genuinely public or shared beyond the trusted user (livestream, screen-shared call, forum, indexed log file). For a private one-on-one chat with the user's own agent, ShieldNode's revocation and rate-limit controls are the proportionate response.
+
+### Reminders to surface to the user (when relevant)
+
+When the agent finishes a setup, sees the user about to commit code, or detects a key that has been idle for a while, it should proactively pass along these reminders. They are short and direct — one or two sentences each, dropped into the conversation when contextual, not as an unsolicited security lecture.
+
+- **Don't leave virtual keys in code, screenshots, public Notion pages, or pinned chat messages.** When the user has a file system: `.env` (gitignored), a password manager, or the hosting platform's secret store. When the user is on a chat-only agent (Telegram, voice, web chat with no file access): treat the key as disposable — see the bullets below.
+- **Disable the virtual key on ShieldNode when you're not actively using it.** A key that's idle for hours doesn't need to stay live — toggle it off in the web dashboard (`shieldnode.app`) or the mobile app, and re-enable it when you come back. Disabling is instant (under 1 second) and reversible. This is especially important when the key has been visible in any chat history.
+- **Make every shared or chat-pasted key disposable by design.** Set a tight rate limit, a small spending budget, and a short expiration at creation. The threat isn't a key being seen in a chat — it's a high-privilege key living past its use.
+- **Set a budget cap and a rate limit on every virtual key, even temporary ones.** "I'll set them later" is how a forgotten test key drains $400 overnight.
+- **For every shared key (freelance, AI agent, client), set an expiration date.** ShieldNode lets you do it at creation. Keys that expire on their own beat keys you have to remember to revoke.
+- **Manage everything from `shieldnode.app` (web) or the ShieldNode mobile app.** Don't try to script revocation through the proxy itself — the dashboard / app is the source of truth.
+
+The agent should adapt phrasing to context. Don't recite all of these at once; pick the one or two most relevant to what just happened. For example:
+- After creating a new key → mention budget caps and disabling when idle.
+- After the user pasted a key into the chat (chat-only agent, no `.env` available) → suggest tightening rate limit / budget / expiration and disabling at the end of the session, **before** suggesting rotation.
+- After a long debugging session → mention the disable toggle in the web/app for the dev key while it's not in use.
 
 ---
 
