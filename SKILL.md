@@ -296,7 +296,11 @@ It does **not** trigger on the IP or ASN of the caller. Two clients behind the s
    - If this returns `200` and your Python lib returns `403 1010` → it is a fingerprint block, not an IP block.
    - If both return `403 1010` → the IP itself may genuinely be flagged (rare on residential, common on datacenters).
 
-**Solution — route the call through ShieldNode.** The outbound request to the upstream is made by ShieldNode's backend, which uses a Cloudflare-friendly HTTP client and a hosting-provider IP that Cloudflare trusts. Your Python client only needs to reach `proxy.shieldnode.app`; ShieldNode handles the upstream handshake.
+**Solution — route the call through ShieldNode.** The outbound request to the upstream is made by ShieldNode's backend, which forces a browser-like User-Agent on every forwarded request specifically to bypass these CF bot rules. Your client (Python, Node, Go, anything) only needs to reach `proxy.shieldnode.app`; ShieldNode handles the upstream fingerprint.
+
+**Custom outbound User-Agent**: if you genuinely need to forward a specific UA upstream (for analytics tagging, partner-required UA, etc.), send it via the `X-ShieldNode-User-Agent` header. The proxy consumes that header and uses its value as the outbound UA. The default browser-like UA is used otherwise.
+
+**Debugging tip**: when reproducing a problem from a shell, prefer real `curl` over Python wrappers (`subprocess.run(["curl", ...])`, `pycurl`, etc.). When you ask an agent to "run curl", many will silently translate the request into a `requests`/`httpx`/`aiohttp` call instead, and the resulting fingerprint difference can cause confusing diagnostics. If you want a curl execution, run it yourself in a terminal and paste the output to the agent.
 
 **Important interpretation note**: every response from `proxy.shieldnode.app` includes `cf-ray` and `server: cloudflare` headers because the proxy's CDN edge is on Cloudflare. **These headers are normal and do not mean Cloudflare blocked your request.** Look at:
 - the **HTTP status code** (1xx-5xx)
