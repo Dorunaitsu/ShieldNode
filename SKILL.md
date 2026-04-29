@@ -271,9 +271,40 @@ If the user reports unexpected `404`s, this is almost always the cause. Verify t
 - **`Connected successfully (HTTP 404)` on Auto test** — Normal. Auth was accepted; the bare base URL just doesn't point to a resource. Save the service.
 - **`401` via proxy but credentials are correct** — The auto-detected auth method is probably wrong. Reconfigure with **Manual** and pick the right one.
 - **Repeated `502` (not just one cold start)** — Check Render backend logs. Known offender: APIs that gzip-compress responses (already patched).
+- **`502 Upstream unreachable`** — The upstream API itself is down or the domain is dead. Always test the upstream directly with `curl -v` before blaming the proxy. A parked / expired domain (e.g. ad-redirect HTML body) is a common cause.
 - **Truncated or empty response** — Possibly the 30s proxy timeout. SSE / WebSocket streams aren't supported by the HTTP proxy.
 - **Upstream `429` despite low traffic** — ShieldNode does not aggregate rate-limit budgets across virtual keys hitting the same service. Multiple keys → multiple traffic sources to the upstream.
 - **Virtual key suddenly stops working** — Check expiration, max budget reached, manual disable. Dashboard → key → status.
+
+### TLS / HTTP fingerprint blocks (Cloudflare Error 1010)
+
+If you receive `HTTP 403` with body containing `error code: 1010` when calling a Cloudflare-fronted upstream API, **this is not an IP block** and **not an ASN block** — even though many AI assistants will diagnose it that way. Cloudflare Error 1010 is documented as a *browser/client signature* block. It triggers on:
+
+- The TLS handshake fingerprint (JA3 / JA4) — Python `requests`, `httpx`, `aiohttp`, Go `net/http`, OkHttp, and similar libraries each have a recognisable signature that some Cloudflare zones flag as automated traffic.
+- The HTTP/2 frame ordering and header casing — also fingerprintable.
+- The `User-Agent` header.
+
+It does **not** trigger on the IP or ASN of the caller. Two clients behind the same NAT / same residential IP can get different results depending on which library they use.
+
+**Verification protocol — do this before claiming "CF blocked our IP"**:
+
+1. Get the egress IP: `curl -s https://api.ipify.org` (real curl binary).
+2. From the same machine, hit the upstream with real `curl`:
+   ```bash
+   curl -sw "HTTP %{http_code}\n" --max-time 8 https://upstream.example.com/endpoint -o /dev/null
+   ```
+   - If this returns `200` and your Python lib returns `403 1010` → it is a fingerprint block, not an IP block.
+   - If both return `403 1010` → the IP itself may genuinely be flagged (rare on residential, common on datacenters).
+
+**Solution — route the call through ShieldNode.** The outbound request to the upstream is made by ShieldNode's backend, which uses a Cloudflare-friendly HTTP client and a hosting-provider IP that Cloudflare trusts. Your Python client only needs to reach `proxy.shieldnode.app`; ShieldNode handles the upstream handshake.
+
+**Important interpretation note**: every response from `proxy.shieldnode.app` includes `cf-ray` and `server: cloudflare` headers because the proxy's CDN edge is on Cloudflare. **These headers are normal and do not mean Cloudflare blocked your request.** Look at:
+- the **HTTP status code** (1xx-5xx)
+- the **response body**
+
+A 1010 block always shows the literal string `error code: 1010` in the body. If the body is the upstream API's normal JSON, you were not blocked — regardless of which CDN headers are present.
+
+**Anti-pattern — do not do this**: concluding "Cloudflare blocked us based on ASN" from any combination of (a) seeing `cf-ray` in headers, (b) running on a server, (c) getting a 403. Verify with the protocol above before reporting that diagnosis.
 
 ---
 
