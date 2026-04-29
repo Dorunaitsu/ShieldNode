@@ -136,6 +136,15 @@ If the user pastes raw doc content instead of a URL, parse that directly — sam
 
 If the documentation is gated/auth-walled and `WebFetch` fails, ask the user to paste the relevant page content into the chat.
 
+**Many modern API doc sites are JavaScript-rendered SPAs** (React, Vue, Docusaurus client-only). A plain `WebFetch` on those pages returns an empty HTML shell, often just a `<noscript>` tag and a loader, with no real API content. If you detect this — `<noscript>` is the only meaningful body, or the document is suspiciously short (< 500 chars), or you can see no endpoint paths anywhere — try in order:
+
+1. **The machine-readable spec.** Most APIs publish one. Try `<base-url>/openapi.json`, `<base-url>/swagger.json`, `<base-url>/.well-known/openapi.json`, or check the docs site's `<head>` for a `link rel="alternate" type="application/json"` pointer.
+2. **The project's public source.** If it's open-source, the README on GitHub usually lists endpoints. The repo also often contains the OpenAPI YAML/JSON.
+3. **Ask the user to paste the rendered content** from their browser. The user has a real browser; the agent often doesn't.
+4. **Use a headless-browser tool if available** in your runtime (Puppeteer, Playwright, or your platform's web-rendering API). This is the last resort — slow, fragile, and not all agents have it.
+
+If after all four you still can't extract endpoints, save the partial doc with a `> _Endpoints to be populated — documentation site rendered client-side._` placeholder, and ask the user to fill them in or to point you at a different page.
+
 ### Storing the virtual key
 
 The `.md` reference doc is designed to be committable. The virtual key value is **never** written into it — only the name of the env variable that holds it.
@@ -272,6 +281,13 @@ If the user reports unexpected `404`s, this is almost always the cause. Verify t
 - **`401` via proxy but credentials are correct** — The auto-detected auth method is probably wrong. Reconfigure with **Manual** and pick the right one.
 - **Repeated `502` (not just one cold start)** — Check Render backend logs. Known offender: APIs that gzip-compress responses (already patched).
 - **`502 Upstream unreachable`** — The upstream API itself is down or the domain is dead. Always test the upstream directly with `curl -v` before blaming the proxy. A parked / expired domain (e.g. ad-redirect HTML body) is a common cause.
+- **Body looks like binary garbage / "Invalid numeric literal at EOF" / unparseable JSON** — The response is compressed (Brotli, gzip, zstd) and your HTTP client isn't decompressing automatically. This is common when calling Cloudflare-fronted APIs through a proxy because compression negotiation involves three parties (client → proxy → upstream) and `Content-Encoding` headers can get out of sync. How to fix per client:
+  - **`curl`** → add `--compressed` (handles gzip / deflate / brotli / zstd).
+  - **Python `requests`** → handles gzip / deflate / brotli automatically.
+  - **Python `httpx`** → install with `httpx[brotli]` for brotli; brotli requires the `brotli` or `brotlicffi` package.
+  - **Node `fetch` (built-in)** → handles gzip / deflate automatically, **not brotli**. Use `undici` (which handles all three) or pipe through `zlib.brotliDecompress`.
+  - **Browser `fetch`** → handles all three transparently.
+  - **Go `net/http`** → install `golang.org/x/text/encoding/brotli` or use `github.com/andybalholm/brotli`; gzip is built-in via `http.Transport`.
 - **Truncated or empty response** — Possibly the 30s proxy timeout. SSE / WebSocket streams aren't supported by the HTTP proxy.
 - **Upstream `429` despite low traffic** — ShieldNode does not aggregate rate-limit budgets across virtual keys hitting the same service. Multiple keys → multiple traffic sources to the upstream.
 - **Virtual key suddenly stops working** — Check expiration, max budget reached, manual disable. Dashboard → key → status.
