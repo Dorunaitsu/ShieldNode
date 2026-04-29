@@ -73,6 +73,18 @@ Real credentials are encrypted at rest and never exposed to clients. Virtual key
 → Read more at **[shieldnode.app/docs](https://shieldnode.app/docs)**
 → Try it free at **[shieldnode.app](https://shieldnode.app)**
 
+## Security
+
+ShieldNode is built around the principle that your real upstream credentials should never leave the server, and your virtual keys should never be recoverable after creation.
+
+- **Real upstream credentials**: encrypted at rest with **AES-256-GCM**. The encryption key is held by the backend process, separately from the database. Decryption happens in memory at request time and never hits disk or logs.
+- **Virtual keys**: hashed with **SHA-256** before storage. The plaintext key is shown to you exactly once at creation and is not recoverable afterward — losing it means generating a new one.
+- **In transit**: TLS 1.2+ on every hop.
+- **Body privacy**: ShieldNode forwards request and response bodies transparently. We do not log, store, or inspect them. Only request metadata is recorded (method, path, status, latency, timestamp).
+- **Instant revocation**: disabling a virtual key invalidates it via in-memory cache propagation in under 1 second, with no client-side rotation required.
+
+Operational details (KMS choice, key rotation cadence, backup procedures, infrastructure boundaries) are intentionally not disclosed.
+
 ## Why this skill
 
 Most AI agents — even capable ones like Claude Code, Cursor, and Continue — don't natively know about ShieldNode. When you ask them to integrate an API, they default to embedding your real key directly in the code.
