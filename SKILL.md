@@ -29,6 +29,9 @@ Because the path is appended verbatim, the **base URL formatting** decided at se
 
 Three configuration paths exist in the dashboard. Pick the right one for the situation.
 
+> **Architectural rule — one service = one base URL.** A ShieldNode service is bound to a single base URL at creation time. APIs that span multiple subdomains (Twilio: `api.twilio.com` + `video.twilio.com` + `chat.twilio.com`; AWS: each service has its own subdomain; Shopify: Admin API + Storefront API on different hostnames) require **one ShieldNode service per subdomain**, with a separate virtual key for each. Name them clearly (e.g. `twilio-rest`, `twilio-video`) so the user can distinguish them in the dashboard.
+
+
 ### Option A — Auto (default, fastest)
 
 Use when the API uses a common auth scheme (Bearer, x-api-key, Basic, query param) and the documentation is straightforward.
@@ -150,6 +153,8 @@ If after all four you still can't extract endpoints, save the partial doc with a
 The `.md` reference doc is designed to be committable. The virtual key value is **never** written into it — only the name of the env variable that holds it.
 
 After the user has the key (shown once at creation in the dashboard), the agent must wire the env var properly. Pick the env var name with the convention `SHIELDNODE_<SERVICE>_KEY` in uppercase (e.g. `SHIELDNODE_STRIPE_KEY`).
+
+**Multiple environments of the same API**: when the user has more than one ShieldNode service for the same upstream (e.g. Stripe Test + Stripe Live, or staging vs. production for an internal API), expand the convention to `SHIELDNODE_<SERVICE>_<ENV>_KEY` to avoid clobbering. Examples: `SHIELDNODE_STRIPE_TEST_KEY` / `SHIELDNODE_STRIPE_LIVE_KEY`, `SHIELDNODE_OPENAI_DEV_KEY` / `SHIELDNODE_OPENAI_PROD_KEY`. The agent should detect this case by checking whether the user already has a `SHIELDNODE_<SERVICE>_KEY` defined in `.env`; if yes, propose the env-suffixed form and ask which environment this new key represents.
 
 Steps:
 
@@ -281,6 +286,10 @@ If the user reports unexpected `404`s, this is almost always the cause. Verify t
 - **`401` via proxy but credentials are correct** — The auto-detected auth method is probably wrong. Reconfigure with **Manual** and pick the right one.
 - **Repeated `502` (not just one cold start)** — Check Render backend logs. Known offender: APIs that gzip-compress responses (already patched).
 - **`502 Upstream unreachable`** — The upstream API itself is down or the domain is dead. Always test the upstream directly with `curl -v` before blaming the proxy. A parked / expired domain (e.g. ad-redirect HTML body) is a common cause.
+- **Pagination breaks with `401` after the first page (Stripe, GitHub, Shopify, Notion, Algolia)** — Many APIs return absolute URLs in their `Link` response header or in JSON fields like `next_url`, `next`, or `cursor.next_url`, pointing at the upstream domain (e.g. `https://api.stripe.com/v1/customers?starting_after=xyz`). If the client follows these URLs verbatim, the request bypasses ShieldNode and lands on the upstream with a `sk_live_...` virtual key it cannot understand → `401`. Two correct patterns:
+  1. **Extract just the cursor / page parameter** from the absolute URL and re-use the original ShieldNode base URL: `https://proxy.shieldnode.app/customers?starting_after=xyz`. This is the cleanest approach and what most SDKs do internally if you set their `base_url` to the proxy.
+  2. **Rewrite the host** in the absolute URL: replace `https://api.stripe.com/v1` with `https://proxy.shieldnode.app` (path included or not depending on the configured base URL — see [base URL formatting](#base-url-formatting--the-main-pitfall)).
+  Hard rule: **never let the next-page request leave for the upstream domain directly.** It will fail and the failure does not appear in ShieldNode logs.
 - **Body looks like binary garbage / "Invalid numeric literal at EOF" / unparseable JSON** — The response is compressed (Brotli, gzip, zstd) and your HTTP client isn't decompressing automatically. This is common when calling Cloudflare-fronted APIs through a proxy because compression negotiation involves three parties (client → proxy → upstream) and `Content-Encoding` headers can get out of sync. How to fix per client:
   - **`curl`** → add `--compressed` (handles gzip / deflate / brotli / zstd).
   - **Python `requests`** → handles gzip / deflate / brotli automatically.
