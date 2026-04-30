@@ -56,14 +56,12 @@ Use when Auto fails, or when you want to force a specific auth method.
    - **Query Param** → `?api_key=<value>`. Leave the field empty to let the proxy try common parameter names.
 3. Test → save.
 
-> **Multi-header auth (e.g. `Client-Id` + `Client-Secret` simultaneously)** — common with banking, shipping carriers (DHL, FedEx), and some enterprise B2B SaaS — is supported via **Auto mode**, not Manual. Workflow:
-> 1. Tab **Auto**.
+> **Multi-header auth (e.g. `Client-Id` + `Client-Secret` simultaneously)** — common with banking, shipping carriers (DHL, FedEx), and some enterprise B2B SaaS — is supported in both **Auto** and **Manual** modes. Workflow:
+> 1. Tab **Auto** (lets the proxy detect it on its own) or **Manual → Multi-header** (forces it).
 > 2. Use the **+ Add credential** button under the Credentials section to add one row per header.
 > 3. Each row's left field is the **exact header name** the upstream expects (`Client-Id`, `X-Client-Secret`, etc., case-insensitive); the right field is the value.
-> 4. Click **Test connection**. The auto-detector probes `multi_header` mode by sending all rows as simultaneous headers and confirms when the upstream returns a 2xx/4xx that isn't 401/403.
+> 4. Click **Test connection**. The proxy sends all rows as simultaneous headers and confirms when the upstream returns a non-401/403 response.
 > 5. Save. The forwarder will inject all credentials on every proxied request.
->
-> Manual mode does not expose multi-header directly, so use Auto for these cases.
 
 ### Option C — AI Configurator
 
