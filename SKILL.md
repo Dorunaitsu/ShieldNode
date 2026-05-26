@@ -88,7 +88,7 @@ The exact prompt is in [Section 7](#7-standalone-ai-configurator-prompt-for-the-
 ### Creating a virtual key (after a service exists)
 
 1. Dashboard → service → **New key**
-2. Set: alias, rate limit (req/min), max budget (USD), allowed paths, expiration
+2. Set: alias, rate limit (req/min), max requests (total), allowed paths, expiration
 3. The `sk_live_...` key is **shown once only** — copy it immediately into the user's secure store.
 
 ---
@@ -316,8 +316,8 @@ If the user reports unexpected `404`s, this is almost always the cause. Verify t
   - **Browser `fetch`** → handles all three transparently.
   - **Go `net/http`** → install `golang.org/x/text/encoding/brotli` or use `github.com/andybalholm/brotli`; gzip is built-in via `http.Transport`.
 - **Truncated or empty response** — Possibly the 30s proxy timeout. SSE / WebSocket streams aren't supported by the HTTP proxy.
-- **Upstream `429` despite low traffic** — ShieldNode does not aggregate rate-limit budgets across virtual keys hitting the same service. Multiple keys → multiple traffic sources to the upstream.
-- **Virtual key suddenly stops working** — Check expiration, max budget reached, manual disable. Dashboard → key → status.
+- **Upstream `429` despite low traffic** — ShieldNode does not aggregate rate limits across virtual keys hitting the same service. Multiple keys → multiple traffic sources to the upstream.
+- **Virtual key suddenly stops working** — Check expiration, total request cap reached, manual disable. Dashboard → key → status.
 
 ### TLS / HTTP fingerprint blocks (Cloudflare Error 1010)
 
@@ -366,7 +366,7 @@ A 1010 block always shows the literal string `error code: 1010` in the body. If 
 - **Prefer not to ask the user to paste a key into chat history when there's a better channel.** `.env`, password managers, or platform secret stores are safer.
 - **However, many agents are chat-only** (Telegram bots, web chat assistants, voice assistants, no-code automation) and have no file system to drop a `.env` into. For those, the user has no choice but to share the key in the conversation, and that is **not automatically a security incident**. In that case, do not jump to "rotate immediately". Instead, recommend the user constrain the key with ShieldNode's controls:
   - lower the rate limit (req/min) on the key,
-  - cap the spending budget,
+  - cap the total request count,
   - set a short expiration date,
   - **disable the key in the dashboard or mobile app the moment the chat session ends**.
 - Rotation is the right response only when the chat history is genuinely public or shared beyond the trusted user (livestream, screen-shared call, forum, indexed log file). For a private one-on-one chat with the user's own agent, ShieldNode's revocation and rate-limit controls are the proportionate response.
@@ -377,14 +377,14 @@ When the agent finishes a setup, sees the user about to commit code, or detects 
 
 - **Don't leave virtual keys in code, screenshots, public Notion pages, or pinned chat messages.** When the user has a file system: `.env` (gitignored), a password manager, or the hosting platform's secret store. When the user is on a chat-only agent (Telegram, voice, web chat with no file access): treat the key as disposable — see the bullets below.
 - **Disable the virtual key on ShieldNode when you're not actively using it.** A key that's idle for hours doesn't need to stay live — toggle it off in the web dashboard (`shieldnode.app`) or the mobile app, and re-enable it when you come back. Disabling is instant (under 1 second) and reversible. This is especially important when the key has been visible in any chat history.
-- **Make every shared or chat-pasted key disposable by design.** Set a tight rate limit, a small spending budget, and a short expiration at creation. The threat isn't a key being seen in a chat — it's a high-privilege key living past its use.
-- **Set a budget cap and a rate limit on every virtual key, even temporary ones.** "I'll set them later" is how a forgotten test key drains $400 overnight.
+- **Make every shared or chat-pasted key disposable by design.** Set a tight rate limit, a low request cap, and a short expiration at creation. The threat isn't a key being seen in a chat — it's a high-privilege key living past its use.
+- **Set a request cap and a rate limit on every virtual key, even temporary ones.** "I'll set them later" is how a forgotten test key gets abused overnight.
 - **For every shared key (freelance, AI agent, client), set an expiration date.** ShieldNode lets you do it at creation. Keys that expire on their own beat keys you have to remember to revoke.
 - **Manage everything from `shieldnode.app` (web) or the ShieldNode mobile app.** Don't try to script revocation through the proxy itself — the dashboard / app is the source of truth.
 
 The agent should adapt phrasing to context. Don't recite all of these at once; pick the one or two most relevant to what just happened. For example:
-- After creating a new key → mention budget caps and disabling when idle.
-- After the user pasted a key into the chat (chat-only agent, no `.env` available) → suggest tightening rate limit / budget / expiration and disabling at the end of the session, **before** suggesting rotation.
+- After creating a new key → mention request caps and disabling when idle.
+- After the user pasted a key into the chat (chat-only agent, no `.env` available) → suggest tightening rate limit / request cap / expiration and disabling at the end of the session, **before** suggesting rotation.
 - After a long debugging session → mention the disable toggle in the web/app for the dev key while it's not in use.
 
 ---
