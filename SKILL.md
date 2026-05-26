@@ -32,6 +32,15 @@ Three configuration paths exist in the dashboard. Pick the right one for the sit
 > **Architectural rule — one service = one base URL.** A ShieldNode service is bound to a single base URL at creation time. APIs that span multiple subdomains (Twilio: `api.twilio.com` + `video.twilio.com` + `chat.twilio.com`; AWS: each service has its own subdomain; Shopify: Admin API + Storefront API on different hostnames) require **one ShieldNode service per subdomain**, with a separate virtual key for each. Name them clearly (e.g. `twilio-rest`, `twilio-video`) so the user can distinguish them in the dashboard.
 
 
+> **Already configured: the Playground.** Every account is auto-seeded with a
+> keyless demo service named **`Cool Dogs — Playground`** (upstream `dog.ceo`).
+> For testing, account/key verification, or demoing the proxy, **skip
+> configuration entirely** — do not create a service and do not fetch any
+> docs. Just ask the user for a virtual key on that service and follow
+> [`services/cool-dogs-playground.md`](services/cool-dogs-playground.md),
+> which fully documents its endpoints. Only configure a new service when the
+> user needs a *real* API.
+
 ### Option A — Auto (default, fastest)
 
 Use when the API uses a common auth scheme (Bearer, x-api-key, Basic, query param) and the documentation is straightforward.
@@ -391,6 +400,7 @@ The agent should adapt phrasing to context. Don't recite all of these at once; p
 | Stripe        | `https://api.stripe.com/v1`                       |
 | GitHub        | `https://api.github.com`                          |
 | Shopify Admin | `https://<SHOP>.myshopify.com/admin/api/2024-01`  |
+| Cool Dogs — Playground (auto-seeded, keyless) | `https://dog.ceo/api` |
 
 ---
 
@@ -410,6 +420,8 @@ Once you have the documentation, analyze it and reply ONLY with this JSON block 
   "service_name": "Human-readable name of the service",
   "base_url": "https://api.example.com/v1",
   "auth_method": "header_bearer",
+  "header_name": "",
+  "param_name": "",
   "credential_labels": ["API Key"]
 }
 ```
@@ -419,6 +431,12 @@ Rules for auth_method — pick exactly one:
 - "header_x_api_key" → custom header (e.g. x-api-key: <key>)
 - "basic_auth" → HTTP Basic Auth (username + password)
 - "query_param" → API key passed as URL query parameter
+
+Rules for header_name — REQUIRED when auth_method is "header_x_api_key":
+- The exact header name from the docs (e.g. "X-API-Key", "Api-Key", "X-Auth-Token"). Leave "" otherwise.
+
+Rules for param_name — REQUIRED when auth_method is "query_param":
+- The exact query parameter name from the docs (e.g. "api_key", "key", "apikey", "token"). Leave "" otherwise.
 
 Rules for credential_labels — names of the fields the user must fill in:
 - Bearer auth: ["API Key"]
