@@ -71,6 +71,18 @@ curl -H "X-Api-Key: $SHIELDNODE_PLAYGROUND_KEY" \
 `message` is a string (image URL) or, for list endpoints, an object/array.
 `status` is `"success"` or `"error"`.
 
+## Push approval
+- **Default window**: 30 min if the user disables the playground key for any
+  reason. Sending `X-Approval-Duration: 5m` is fine — this is a smoke-test
+  service, short windows are appropriate.
+- **When triggered**: only if the user explicitly toggles the playground key
+  off in the dashboard / mobile app. The seeded key is active by default.
+- **On `403 approval_required`**: surface to the user *"Looks like you've
+  disabled the Cool Dogs playground key — approve on ShieldNode mobile to
+  continue, or re-enable it in the dashboard."*
+- **On `403 approval_denied`**: stop and surface the same hint about
+  re-enabling in the dashboard.
+
 ## Notes
 - **Upstream errors are passed through.** An unknown path returns HTTP 404 with
   `{"status":"error","message":"No route found ...","code":404}`. This still

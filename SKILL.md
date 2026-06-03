@@ -135,6 +135,13 @@ Bearer token in `Authorization` header (handled by ShieldNode — client only se
 | PATCH  | /users/{id}          | Update a user |
 | DELETE | /users/{id}          | Delete a user |
 
+## Push approval
+- **Default window**: 30 min (override per call with `X-Approval-Duration: <Nm>`).
+- **When triggered**: only when the user has disabled the key in the dashboard or on the mobile app, AND has the ShieldNode mobile app installed. Otherwise the key behaves as always-on.
+- **On `403 approval_required`**: wait the `poll_interval_seconds` value (default 30s), retry, loop up to `timeout_seconds` (default 5 min). Tell the user once that an approval is pending on their phone.
+- **On `403 approval_denied`**: stop immediately, surface "User declined access on ShieldNode mobile."
+- **Suggested duration for this service**: <fill in based on typical session length, e.g. "30 min for casual use, 2h for long batches">.
+
 ## Notes
 - Rate limit upstream: 60 req/min per API key.
 - Pagination: cursor-based via `?cursor=<token>`.
@@ -163,6 +170,19 @@ If the documentation is gated/auth-walled and `WebFetch` fails, ask the user to 
 4. **Use a headless-browser tool if available** in your runtime (Puppeteer, Playwright, or your platform's web-rendering API). This is the last resort — slow, fragile, and not all agents have it.
 
 If after all four you still can't extract endpoints, save the partial doc with a `> _Endpoints to be populated — documentation site rendered client-side._` placeholder, and ask the user to fill them in or to point you at a different page.
+
+### Filling the Push approval section
+
+The "Push approval" block belongs in every per-service doc — it's how a future agent (or your future self) knows what to do when the key is gated by the mobile app. When you generate the per-service file:
+
+1. Always include the **Push approval** section verbatim from the template above.
+2. Replace the *Suggested duration for this service* line with a value that fits the typical workload of that API. Suggested baselines:
+   - **Chat / completion / inference APIs** (OpenAI, Anthropic, Mistral, OpenRouter, …): 30 min.
+   - **Long-running batch / training / video / audio generation** (ElevenLabs voice clones, fine-tuning, large image batches): 2 h.
+   - **One-shot lookups** (geocoding, currency, weather, CMS reads): 15 min.
+   - **Anything 24/7 cron / automation** the user explicitly runs as a daemon: write *"this service is typically run unattended — the user should leave it always-on rather than rely on push approval"*.
+3. If the user has already configured a per-key default duration in the ShieldNode dashboard for this service, write that exact value and add *"(matches the dashboard default — agent does not need to send the header)"*.
+4. If the agent reasonably knows the user is on web only (no mobile app), add *"User does not appear to have the mobile app — push approval will fall back to plain 403 `key_disabled`."*
 
 ### Storing the virtual key
 
@@ -275,12 +295,72 @@ If the user reports unexpected `404`s, this is almost always the cause. Verify t
 |----------|--------------------------------------------------------|---------------------------------------------------------------------|
 | 200–299  | Success                                                | All good                                                            |
 | 401      | Virtual key invalid or expired                         | Verify the key in the dashboard                                     |
-| 403      | Key disabled, quota exceeded, or path not allowlisted  | Check key restrictions                                              |
+| 403      | Key disabled, quota exceeded, or path not allowlisted  | See "Push approval" below for `approval_required` / `approval_denied`. Otherwise check key restrictions |
 | 404      | Path does not exist on the upstream API                | Check base URL formatting (above) and the API docs                  |
 | 429      | Rate limit reached (proxy or upstream)                 | Wait or raise the rate limit on the virtual key                     |
 | 500      | Internal proxy error                                   | Check Render backend logs                                           |
 | 502      | Backend cold start or crash                            | Wait 30s; if persistent, check Render logs                          |
 | 504      | Upstream timeout                                       | Upstream API is slow / down                                         |
+
+### Push approval (mobile push flow)
+
+When a virtual key is deactivated and the user has the ShieldNode mobile app
+installed, calling that key returns a special 403 instead of the plain
+`key_disabled`. The user receives a push notification on their phone and
+taps **Approve** to grant access for a bounded window — the key activates,
+your next call succeeds.
+
+**Response shapes:**
+
+```json
+// First call to a disabled key, when the user has a registered device:
+HTTP 403
+{
+  "error": "approval_required",
+  "message": "Awaiting user approval on ShieldNode mobile",
+  "request_id": "…",
+  "requested_minutes": 30,
+  "poll_interval_seconds": 30,
+  "timeout_seconds": 300
+}
+
+// If the user explicitly declined:
+HTTP 403
+{ "error": "approval_denied", "message": "User declined the most recent approval request" }
+
+// If the user has no mobile device registered → unchanged classic behaviour:
+HTTP 403
+{ "error": "key_disabled", "message": "This key has been deactivated" }
+```
+
+**How to react:**
+
+| Response          | What to do                                                                                            |
+|-------------------|-------------------------------------------------------------------------------------------------------|
+| `approval_required` | Wait `poll_interval_seconds` (default 30s) and retry. Loop up to `timeout_seconds` (default 5 min). |
+| `approval_denied` | Stop polling. Surface in chat: "User declined access on ShieldNode mobile." Do not retry on your own. |
+| `key_disabled`    | No mobile app on the user's side. Surface and stop.                                                   |
+| 200               | Approval was granted (or no approval was needed). Resume normal operation.                            |
+
+**Requesting a specific duration:**
+
+Add `X-Approval-Duration: <minutes>` to your request. The value is clamped
+server-side to [1, 1440] (24 h). Honored examples: `5`, `30`, `15m`, `2h`.
+If you do not send the header, the user's per-key default (configurable in
+the dashboard) is used, falling back to 30 min.
+
+```bash
+curl -H "X-Api-Key: sk_live_…" \
+     -H "X-Approval-Duration: 15m" \
+     "https://proxy.shieldnode.app/v1/chat/completions"
+```
+
+**Best practice:** if the user gives you guidance like *"for OpenAI ask for
+30 min by default"*, encode that as the header on your first call to that
+service. Do **not** spam polls or fire multiple requests for the same key
+in rapid succession — the server already debounces push notifications to
+1 per 30s per (user, key), but parallel calls just wait for the same
+approval anyway.
 
 ### Diagnostic checklist
 
