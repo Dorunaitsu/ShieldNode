@@ -349,8 +349,19 @@ server-side to [1, 1440] (24 h). Honored examples: `5`, `30`, `15m`, `2h`.
 If you do not send the header, the user's per-key default (configurable in
 the dashboard) is used, falling back to 30 min.
 
+**Identifying the agent (highly recommended):**
+
+Add `X-Agent-Name: <name>` so the user's notification and approval screen
+say *"Claude is requesting access"* instead of the generic *"An external
+agent is requesting access"*. Capped server-side to 60 chars. Use a short
+recognisable label the user will associate with this workflow — typically
+the AI assistant or product name (`Claude`, `Codex`, `Cursor`, or a custom
+bot name like `Athena`, `Hermes`). Skip it only if there is genuinely no
+sensible name to give.
+
 ```bash
 curl -H "X-Api-Key: sk_live_…" \
+     -H "X-Agent-Name: Claude" \
      -H "X-Approval-Duration: 15m" \
      "https://proxy.shieldnode.app/v1/chat/completions"
 ```
@@ -361,6 +372,76 @@ service. Do **not** spam polls or fire multiple requests for the same key
 in rapid succession — the server already debounces push notifications to
 1 per 30s per (user, key), but parallel calls just wait for the same
 approval anyway.
+
+**Worked end-to-end example** (the canonical flow every agent should follow):
+
+```python
+import time
+import requests
+
+PROXY = "https://proxy.shieldnode.app"
+KEY = "sk_live_…"  # virtual key from ShieldNode dashboard
+
+def call_with_approval(path, *, method="GET", json=None, agent="Claude",
+                       minutes=15, max_wait_s=300, poll_s=30):
+    """
+    Call the proxy. If the key is disabled and the user has the mobile app,
+    notify them and poll until they approve, decline, or time out.
+    """
+    headers = {
+        "X-Api-Key": KEY,
+        "X-Agent-Name": agent,           # appears in the user's notif
+        "X-Approval-Duration": f"{minutes}m",  # honored on 403, ignored on 200
+    }
+
+    elapsed = 0
+    while True:
+        r = requests.request(method, f"{PROXY}{path}", headers=headers, json=json)
+
+        if r.status_code < 400:
+            return r  # success — proxy let it through
+
+        if r.status_code == 403:
+            body = r.json()
+            err = body.get("error")
+
+            if err == "approval_required":
+                # First time → tell the user once, then poll silently.
+                if elapsed == 0:
+                    print(f"[ShieldNode] Approval pending on your phone "
+                          f"({body['requested_minutes']} min requested).")
+                if elapsed >= min(max_wait_s, body.get("timeout_seconds", 300)):
+                    raise TimeoutError("ShieldNode approval timed out.")
+                time.sleep(body.get("poll_interval_seconds", poll_s))
+                elapsed += body.get("poll_interval_seconds", poll_s)
+                continue
+
+            if err == "approval_denied":
+                raise PermissionError("User declined access on ShieldNode mobile.")
+
+            if err == "key_disabled":
+                raise PermissionError(
+                    "Key is disabled and no mobile device is registered — "
+                    "the user needs to re-enable it in the dashboard."
+                )
+
+        # Anything else (401, 429, 5xx, path/method restrictions, …) → surface as-is.
+        r.raise_for_status()
+
+# Use it like a normal request:
+data = call_with_approval("/v1/chat/completions",
+                          method="POST",
+                          json={"model": "gpt-4o", "messages": [...]},
+                          agent="Claude", minutes=30).json()
+```
+
+**Key takeaways for agents:**
+
+1. **Always send `X-Agent-Name`.** Generic notifications are ignored. Specific ones get approved.
+2. **Send `X-Approval-Duration` matching the workload.** A 5-min chat reply ≠ an 8-h batch job. Right-sizing reduces re-approval friction.
+3. **Tell the user ONCE that an approval is pending**, then poll silently. Repeated chat messages every 30 seconds is the fastest way to feel like spyware.
+4. **Distinguish denial from timeout** when surfacing to the user. *"You declined"* and *"You didn't respond in 5 min"* are very different signals.
+5. **Don't retry past the timeout.** If the user didn't approve in 5 min, they meant it. Ask them in chat whether to retry instead of looping.
 
 ### Diagnostic checklist
 
