@@ -4,6 +4,14 @@ A skill that teaches AI agents to use [ShieldNode](https://shieldnode.app), an A
 
 > If you want the shortest possible intro: drop this skill into your agent, then ask it *"explain ShieldNode and why I'd use it"*. The skill is structured so the agent can summarise the value, the security model, and the push-approval flow on its own. The rest of this README is for humans.
 
+## Where ShieldNode lives
+
+ShieldNode runs as three coordinated surfaces:
+
+- **Web dashboard** at [shieldnode.app](https://shieldnode.app). Manage services and virtual keys, watch live request logs, see audit history, configure rate limits and spending caps. The full configuration surface.
+- **Mobile app** on iOS and Android. The approval control center. Receive push notifications when an agent needs access, approve or decline in one tap, run the emergency stop that locks every key at once, browse per-key request logs with approval decisions inline.
+- **Agent skill** in this repository. Drop into any agent that loads instructions (Claude Code, Cursor, OpenClaw, Codex, custom bots) and the agent immediately knows how to use virtual keys, request the right approval duration, identify itself in your notifications, and back off cleanly on a decline.
+
 ## What ShieldNode actually is
 
 You write code with an AI agent. At some point the agent needs an API key (OpenAI, Stripe, whatever). Two unpleasant options today:
@@ -19,7 +27,7 @@ That's the boring part. The interesting part is the next section.
 
 The default state of a ShieldNode virtual key, if you want it that way, is **disabled**. Your agent has a key, but it does nothing.
 
-When the agent tries to use it, ShieldNode does not return a generic error. It sends a push notification to your phone.
+When the agent tries to use it, ShieldNode does not return a generic error. It sends a time-sensitive push notification through the ShieldNode mobile app to your phone.
 
 > *Claude is requesting 15 min access to your OpenAI key "production".*
 > [Approve] [Decline]
@@ -30,11 +38,21 @@ The flow takes about three seconds of your attention per session. You stay in co
 
 Why this matters:
 
+- Time-sensitive notifications break through Focus modes and silent profiles on iOS, so the approval request actually reaches you when an agent is blocked. Standard push categories would queue silently until your next unlock; this category does not.
 - Your phone is harder to compromise than your laptop, so the approval channel is more trustworthy than the key channel.
-- You see exactly which agent (Claude, Codex, Cursor, your own bot) is requesting what, when, and for how long. That visibility alone changes how comfortable you are giving an agent access to sensitive things.
+- You see exactly which agent (Claude, Codex, Cursor, OpenClaw, your own bot) is requesting what, when, and for how long. That visibility alone changes how comfortable you are giving an agent access to sensitive things.
 - If you ever wake up to an approval notification you didn't expect, you decline. Nothing was at risk, because the key was off.
 
 This is the part you probably want to demo on launch day. The skill teaches your agent how to participate in this flow correctly (including how to request a duration, how to identify itself, how to poll without spamming).
+
+## Inside the mobile app
+
+The approval push is the surface, the mobile app is the control center. Available on iOS and Android.
+
+- **Approval inbox.** Pending requests are visible on the alerts screen until they expire or you decide. You can decline late from the screen if you missed the push.
+- **Per-key request logs.** Every proxied call lands here with method, path, HTTP status, latency, and timestamp. Approval decisions (approve, decline, expired) appear inline with the calls they gated, so you have one unified audit trail per key.
+- **Key controls.** Pause, disable, delete a virtual key from one screen. Effective in under one second via in-memory cache invalidation.
+- **Emergency stop.** A single button that disables every virtual key on your account at once, no confirmation, no delay. The big red switch you wish every credential system had.
 
 ## What this skill teaches your agent
 
@@ -121,6 +139,8 @@ Honest, blunt feedback is the most valuable kind. Specific complaints beat vague
 
 - Product: [shieldnode.app](https://shieldnode.app)
 - Docs: [shieldnode.app/docs](https://shieldnode.app/docs)
+- Get the app: [shieldnode.app/get-app](https://shieldnode.app/get-app) (auto-detects your platform and links to App Store or Play Store)
+- Mobile waitlist + Nexus waitlist: [shieldnode.app/waitlist](https://shieldnode.app/waitlist)
 
 ## License
 
