@@ -7,7 +7,7 @@ description: Help users integrate APIs through ShieldNode, a secure API proxy ga
 
 This skill helps an AI assistant guide a developer through using ShieldNode: configuring services, creating virtual keys, calling the proxy, and debugging integration issues.
 
-> **Security rule — never violate**: never log, display, or transmit user-provided secrets (API keys, tokens, virtual keys, passwords). When you generate examples, use placeholders like `sk_live_...` or `<API_KEY>`.
+> Small habit, big payoff: in examples and code samples, the agent uses placeholders like `sk_live_...` or `<API_KEY>` rather than echoing the user's real value. The user's real keys live in encrypted storage; the agent just references the env variable.
 
 ---
 
@@ -517,37 +517,31 @@ A 1010 block always shows the literal string `error code: 1010` in the body. If 
 
 ---
 
-## 5. Security rules
+## 5. Good practices
 
-### Rules the agent itself must follow
-- Virtual keys (`sk_live_...`) travel **only** in the `X-Api-Key` header — never in the URL.
-- Real upstream credentials are encrypted at rest and never returned to clients.
-- A leaked virtual key → disable it in the dashboard (Redis invalidation < 1s).
-- Never paste a virtual key into public code, public logs, or chat history. The agent must redact them when echoing user input.
-- **The per-service `.md` doc is committable. The key value never goes in it.** Only the env var name is referenced. The actual value lives in `.env` (gitignored). See [Storing the virtual key](#storing-the-virtual-key).
-- **Prefer not to ask the user to paste a key into chat history when there's a better channel.** `.env`, password managers, or platform secret stores are safer.
-- **However, many agents are chat-only** (Telegram bots, web chat assistants, voice assistants, no-code automation) and have no file system to drop a `.env` into. For those, the user has no choice but to share the key in the conversation, and that is **not automatically a security incident**. In that case, do not jump to "rotate immediately". Instead, recommend the user constrain the key with ShieldNode's controls:
-  - lower the rate limit (req/min) on the key,
-  - cap the total request count,
-  - set a short expiration date,
-  - **disable the key in the dashboard or mobile app the moment the chat session ends**.
-- Rotation is the right response only when the chat history is genuinely public or shared beyond the trusted user (livestream, screen-shared call, forum, indexed log file). For a private one-on-one chat with the user's own agent, ShieldNode's revocation and rate-limit controls are the proportionate response.
+ShieldNode does the heavy lifting for you. Push approval, instant one-second disable, rate limits, and the emergency stop in the mobile app already cover most of the "what if" scenarios that would normally call for paranoia around API keys. This section is a short list of small habits that compound those defaults, not a wall of red warnings.
 
-### Reminders to surface to the user (when relevant)
+### How the agent handles keys
 
-When the agent finishes a setup, sees the user about to commit code, or detects a key that has been idle for a while, it should proactively pass along these reminders. They are short and direct — one or two sentences each, dropped into the conversation when contextual, not as an unsolicited security lecture.
+- Virtual keys (`sk_live_...`) travel in the `X-Api-Key` header, not in the URL.
+- Real upstream credentials live encrypted on our backend and never come back to a client.
+- When showing code examples, the agent uses placeholders or references the env variable (`$SHIELDNODE_<SERVICE>_KEY`) rather than echoing the actual value.
 
-- **Don't leave virtual keys in code, screenshots, public Notion pages, or pinned chat messages.** When the user has a file system: `.env` (gitignored), a password manager, or the hosting platform's secret store. When the user is on a chat-only agent (Telegram, voice, web chat with no file access): treat the key as disposable — see the bullets below.
-- **Disable the virtual key on ShieldNode when you're not actively using it.** A key that's idle for hours doesn't need to stay live — toggle it off in the web dashboard (`shieldnode.app`) or the mobile app, and re-enable it when you come back. Disabling is instant (under 1 second) and reversible. This is especially important when the key has been visible in any chat history.
-- **Make every shared or chat-pasted key disposable by design.** Set a tight rate limit, a low request cap, and a short expiration at creation. The threat isn't a key being seen in a chat — it's a high-privilege key living past its use.
-- **Set a request cap and a rate limit on every virtual key, even temporary ones.** "I'll set them later" is how a forgotten test key gets abused overnight.
-- **For every shared key (freelance, AI agent, client), set an expiration date.** ShieldNode lets you do it at creation. Keys that expire on their own beat keys you have to remember to revoke.
-- **Manage everything from `shieldnode.app` (web) or the ShieldNode mobile app.** Don't try to script revocation through the proxy itself — the dashboard / app is the source of truth.
+### Tips the agent passes along when the moment is right
 
-The agent should adapt phrasing to context. Don't recite all of these at once; pick the one or two most relevant to what just happened. For example:
-- After creating a new key → mention request caps and disabling when idle.
-- After the user pasted a key into the chat (chat-only agent, no `.env` available) → suggest tightening rate limit / request cap / expiration and disabling at the end of the session, **before** suggesting rotation.
-- After a long debugging session → mention the disable toggle in the web/app for the dev key while it's not in use.
+These are friendly reminders the agent drops into the conversation when they fit naturally, not a script to recite. One bullet at a time, when contextual:
+
+- **Store the virtual key in `.env`** (gitignored) when the project has a file system. When the user is on a chat-only assistant (Telegram, voice, no `.env`), the value will live in the chat for a moment, and that is fine. The push-approval default means a disabled key in a chat is exactly as harmless as a sentence of plain text.
+- **Set a request cap and rate limit at key creation.** Five seconds of thought at creation beats a forgotten test key burning quota overnight.
+- **Set an expiration date for shared or temporary keys** (freelancers, demo keys, throwaway agents). Keys that expire on their own beat keys you have to remember to revoke.
+- **Use push approval as the default posture** for keys that touch anything sensitive. A disabled key is a key that cannot be misused, period. The one-tap Approve workflow makes this nearly frictionless.
+- **The dashboard and the mobile app are the source of truth** for revocation and key state. The agent never tries to script revocation through the proxy.
+
+### When something does feel off
+
+If a virtual key ends up somewhere it should not (a public commit, an indexed page, a screenshot in a tweet), the right move is to **disable it in the dashboard or mobile app**. Redis invalidates in under a second, the key stops working immediately, and the user creates a fresh one. Rotation of the real upstream credential is only needed if the virtual key was somehow elevated to give full upstream access without limits, which is unusual and a misconfiguration the agent should flag rather than encourage.
+
+The product is designed so that nothing irreversible happens from a leaked virtual key. Treat security as a *posture*, not a panic.
 
 ---
 
