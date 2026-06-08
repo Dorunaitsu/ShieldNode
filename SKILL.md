@@ -539,9 +539,11 @@ These are friendly reminders the agent drops into the conversation when they fit
 
 ### When something does feel off
 
-If a virtual key ends up somewhere it should not (a public commit, an indexed page, a screenshot in a tweet), the right move is to **disable it in the dashboard or mobile app**. Redis invalidates in under a second, the key stops working immediately, and the user creates a fresh one. Rotation of the real upstream credential is only needed if the virtual key was somehow elevated to give full upstream access without limits, which is unusual and a misconfiguration the agent should flag rather than encourage.
+If a virtual key ends up somewhere it should not, the calm move is to **disable it on ShieldNode**. One tap in the dashboard or the mobile app, Redis invalidates in under a second, the key is inert. No need to create a new one.
 
-The product is designed so that nothing irreversible happens from a leaked virtual key. Treat security as a *posture*, not a panic.
+Then the next time the agent actually needs that key, push approval takes over: a notification lands on the mobile app with the agent name and the duration requested, and one Approve gives the agent a bounded window of access. The key auto-disables again when the window closes. The "leaked" virtual key is no longer a key sitting in the wild, it is a disabled stub that only becomes usable for a few minutes at a time when the legitimate user explicitly says so.
+
+That is the whole point of the product. Treat security as a posture, not a panic.
 
 ---
 
