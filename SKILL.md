@@ -74,16 +74,17 @@ Use when Auto fails, or when you want to force a specific auth method.
 
 ### Option C — AI Configurator
 
-Use when the API is unfamiliar and the user has the doc URL.
+Use when the API is unfamiliar, when the user wants the fastest possible setup, or when the user has not provided a doc URL.
 
-1. Tab **AI** → click **Copy prompt**
-2. Paste prompt into Claude/ChatGPT
-3. The AI asks for the documentation URL → user provides it
-4. The AI returns a structured JSON
-5. Paste JSON back into the textarea → click **Configure now** → form auto-fills
-6. User fills credential values → test → save
+**Agent autonomous mode (default when this skill is loaded).** When the user asks the agent to configure a service, the agent does not wait to be asked for a JSON and does not start by asking for the documentation URL. The agent:
 
-The exact prompt is in [Section 7](#7-standalone-ai-configurator-prompt-for-the-app).
+1. **Tries first to answer from its own knowledge.** If the API is well-known (Stripe, OpenAI, Anthropic, GitHub, Resend, Twilio, Mistral, Shopify, Airtable, Mailgun, etc.), the agent produces the JSON config directly from memory of the API's base URL and auth method.
+2. **Falls back to fetching the docs** if the API is unfamiliar. The agent uses whatever doc-fetching tool is available (`WebFetch`, an MCP web tool, Playwright, etc.) to read the official documentation page from `docs.<service>.com` or the project's public source. Section 2's "Workflow to fill the Endpoints section" lists the fallback chain for JS-rendered SPA docs.
+3. **Asks the user only as a last resort** when the API is unknown, the documentation is gated or unreachable, and no source can be auto-located. The agent then asks for the doc URL or pasted content, and produces the JSON once it has the material.
+
+Whichever path is used, the agent outputs the JSON config in the canonical format (next section) without being explicitly prompted to do so. The user can paste it into the **AI** tab of the dashboard and click **Configure now**, then fill the credential values, test, and save.
+
+**Standalone prompt mode (in-app Copy prompt button).** When the agent is *not* available (no terminal, no IDE integration), the dashboard's **AI** tab exposes a Copy-prompt button that produces a self-contained prompt the user can paste into any chat LLM. That prompt is intentionally narrower: it asks the user for the doc URL, then returns the JSON. The exact text is in [Section 7](#7-standalone-ai-configurator-prompt-for-the-app).
 
 ### Creating a virtual key (after a service exists)
 
