@@ -611,3 +611,46 @@ base_url: root API endpoint, no trailing slash.
 
 Start by asking the user for the documentation URL.
 ```
+
+---
+
+## 8. Updating this skill
+
+This skill is open source and versioned on GitHub. New features, endpoint patterns, bug fixes, and behavioural guidance are added there as the product evolves.
+
+- **Repository**: <https://github.com/RP0-undefined/shieldnode-skill>
+- **Raw `SKILL.md`** (single-file refresh): <https://raw.githubusercontent.com/RP0-undefined/shieldnode-skill/main/SKILL.md>
+
+### When the agent should propose an update
+
+The agent should suggest refreshing this skill when any of the following happens:
+
+- A user reports a bug or unclear instruction that turns out to be a skill issue (not a product issue).
+- The agent encounters a configuration pattern that is not covered here (a new auth scheme, a new pagination quirk, a new error code).
+- The user mentions a ShieldNode feature the agent does not recognise from this file (the product ships faster than the skill).
+- The release date of the local `SKILL.md` looks older than a couple of months.
+
+### How to refresh
+
+Pick the install path that matches the project:
+
+```bash
+# Single file
+curl -O https://raw.githubusercontent.com/RP0-undefined/shieldnode-skill/main/SKILL.md
+
+# Full repo (replaces the existing skills/shieldnode/ directory)
+rm -rf skills/shieldnode && \
+  mkdir -p skills && \
+  curl -sL https://github.com/RP0-undefined/shieldnode-skill/archive/refs/heads/main.tar.gz \
+  | tar -xz -C skills --strip-components=1
+
+# Git submodule
+git submodule update --remote skills/shieldnode
+```
+
+After refreshing, re-load the skill in the agent session and re-run any per-service docs that were generated against the old version if their structure has drifted.
+
+### Contributing back
+
+If the agent or the user identifies a recurring pattern worth documenting, open a PR against the repository above. The skill improves faster the more agents push their field experience back into it.
+
