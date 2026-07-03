@@ -7,7 +7,7 @@ description: Help users integrate APIs through ShieldNode, a secure API proxy ga
 
 This skill helps an AI assistant guide a developer through using ShieldNode: configuring services, creating virtual keys, calling the proxy, and debugging integration issues.
 
-> Small habit, big payoff: in examples and code samples, the agent uses placeholders like `sk_live_...` or `<API_KEY>` rather than echoing the user's real value. The user's real keys live in encrypted storage; the agent just references the env variable.
+> Small habit, big payoff: in examples and code samples, the agent uses placeholders like `shieldnode_...` or `<API_KEY>` rather than echoing the user's real value. The user's real keys live in encrypted storage; the agent just references the env variable.
 
 ---
 
@@ -17,7 +17,7 @@ This skill helps an AI assistant guide a developer through using ShieldNode: con
 Client → https://proxy.shieldnode.app/{path} → Third-party API (e.g. https://api.openai.com/v1/{path})
 ```
 
-- The client authenticates to the proxy with a **virtual key** (`X-Api-Key: sk_live_...`).
+- The client authenticates to the proxy with a **virtual key** (`X-Api-Key: shieldnode_...`).
 - The proxy substitutes the virtual key with the real upstream credentials and forwards the request.
 - The path after `proxy.shieldnode.app/` is appended verbatim to the **base URL** that was set when the service was created.
 
@@ -90,7 +90,7 @@ Whichever path is used, the agent outputs the JSON config in the canonical forma
 
 1. Dashboard → service → **New key**
 2. Set: alias, rate limit (req/min), max requests (total), allowed paths, expiration
-3. The `sk_live_...` key is **shown once only** — copy it immediately into the user's secure store.
+3. The `shieldnode_...` key is **shown once only** — copy it immediately into the user's secure store.
 
 ---
 
@@ -201,7 +201,7 @@ Steps:
 
    ```env
    # ShieldNode virtual keys — never commit this file.
-   SHIELDNODE_STRIPE_KEY=sk_live_...
+   SHIELDNODE_STRIPE_KEY=shieldnode_...
    ```
 
 2. **Update `.env.example`** (create if missing) with the same key, value blanked out:
@@ -235,10 +235,59 @@ The agent must **never** ask the user to paste the key into the chat. The user p
 
 ## 3. Use the proxy
 
+> **The key format is the signal.** ShieldNode virtual keys start with
+> `shieldnode_`. Whenever you see a `shieldnode_...` value, it is **not** a
+> provider key to use directly — it is a virtual key that must go through
+> `proxy.shieldnode.app` in the `X-Api-Key` header, and this skill applies.
+
+### Auto-configure from a virtual key (whoami)
+
+When you are handed a `shieldnode_...` key (e.g. the user pastes one) and you do
+**not** already have this project's per-service reference doc, resolve the key's
+config in **one call before anything else** — do not ask the user which service
+it is:
+
+```bash
+curl -H "X-Api-Key: shieldnode_..." \
+  "https://proxy.shieldnode.app/_shieldnode/whoami"
+```
+
+Returns the **non-secret** service config so you can self-configure:
+
+```json
+{
+  "service": "OpenAI",
+  "base_url": "https://api.openai.com/v1",
+  "proxy_base_url": "https://proxy.shieldnode.app",
+  "allowed_methods": ["GET", "POST"],
+  "allowed_paths": null,
+  "rate_limit_per_min": 60,
+  "max_requests": null,
+  "expires_at": null,
+  "active": false,
+  "requires_approval": true,
+  "default_approval_duration_minutes": 30
+}
+```
+
+Use it to:
+- Identify which upstream API this key proxies (`service`, `base_url`) and
+  therefore the correct path convention (the `/v1` trap — see
+  [Base URL formatting](#base-url-formatting-the-main-pitfall)).
+- **Generate the per-service reference doc** (Section 2) if one does not already
+  exist in the project.
+- Know whether the next real call goes straight through (`active: true`) or will
+  trigger the push-approval flow (`requires_approval: true`).
+
+whoami is answered by ShieldNode itself, is **never forwarded upstream**, **never
+returns credentials**, does not count as a proxied request, and does not fire a
+push. An invalid key returns `401 invalid_key`. The `/_shieldnode/` path space is
+reserved by the proxy, so it never collides with a real API path.
+
 ### Request format
 
 ```bash
-curl -H "X-Api-Key: sk_live_<VIRTUAL_KEY>" \
+curl -H "X-Api-Key: shieldnode_<VIRTUAL_KEY>" \
   "https://proxy.shieldnode.app/<API_PATH>"
 ```
 
@@ -248,19 +297,19 @@ curl -H "X-Api-Key: sk_live_<VIRTUAL_KEY>" \
 
 **Airtable** (configured base URL = `https://api.airtable.com/v0`)
 ```bash
-curl -H "X-Api-Key: sk_live_..." \
+curl -H "X-Api-Key: shieldnode_..." \
   "https://proxy.shieldnode.app/<BASE_ID>/<TABLE_ID>?maxRecords=10"
 ```
 
 **Resend** (configured base URL = `https://api.resend.com`)
 ```bash
-curl -H "X-Api-Key: sk_live_..." \
+curl -H "X-Api-Key: shieldnode_..." \
   "https://proxy.shieldnode.app/emails"
 ```
 
 **OpenAI** (configured base URL = `https://api.openai.com/v1`)
 ```bash
-curl -H "X-Api-Key: sk_live_..." \
+curl -H "X-Api-Key: shieldnode_..." \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}' \
   "https://proxy.shieldnode.app/chat/completions"
@@ -361,7 +410,7 @@ bot name like `Athena`, `Hermes`). Skip it only if there is genuinely no
 sensible name to give.
 
 ```bash
-curl -H "X-Api-Key: sk_live_…" \
+curl -H "X-Api-Key: shieldnode_…" \
      -H "X-Agent-Name: Claude" \
      -H "X-Approval-Duration: 15m" \
      "https://proxy.shieldnode.app/v1/chat/completions"
@@ -381,7 +430,7 @@ import time
 import requests
 
 PROXY = "https://proxy.shieldnode.app"
-KEY = "sk_live_…"  # virtual key from ShieldNode dashboard
+KEY = "shieldnode_…"  # virtual key from ShieldNode dashboard
 
 def call_with_approval(path, *, method="GET", json=None, agent="Claude",
                        minutes=15, max_wait_s=300, poll_s=30):
@@ -454,7 +503,7 @@ data = call_with_approval("/v1/chat/completions",
    ```
 3. **Verbose curl through the proxy** — see headers and timing:
    ```bash
-   curl -sv -H "X-Api-Key: sk_live_..." \
+   curl -sv -H "X-Api-Key: shieldnode_..." \
      "https://proxy.shieldnode.app/<endpoint>" 2>&1 | grep -E "< HTTP|< content"
    ```
 
@@ -466,7 +515,7 @@ data = call_with_approval("/v1/chat/completions",
 - **`502 Upstream unreachable`** — The upstream API itself is down or the domain is dead. Always test the upstream directly with `curl -v` before blaming the proxy. A parked / expired domain (e.g. ad-redirect HTML body) is a common cause.
 - **`HTTP 413 payload_too_large` when uploading** — The proxy enforces a **90 MB** request-body limit, set just below the Cloudflare CDN edge's hard cap. Past that the edge returns a fast 503 anyway, so 413 is the friendlier explicit version. For larger payloads (audio transcription, fine-tuning datasets, video uploads, large image batches), do not stream them through the proxy. Use a signed-URL pattern instead: get a presigned upload URL from your upstream API (S3, GCS, Cloudflare R2, the API's own pre-signed endpoint) via the proxy, then upload the file from the client directly to that signed URL — the file bytes never touch ShieldNode.
 - **`HTTP 504 upstream timeout` on a large upload** — The total proxy timeout scales with body size (30s baseline, +1s per MB above 5 MB) so a 30 MB upload over a slow link doesn't fail. If you still hit 504, the upstream is probably slow processing the upload, not the proxy. Test the upstream directly with the same payload size to confirm.
-- **Pagination breaks with `401` after the first page (Stripe, GitHub, Shopify, Notion, Algolia)** — Many APIs return absolute URLs in their `Link` response header or in JSON fields like `next_url`, `next`, or `cursor.next_url`, pointing at the upstream domain (e.g. `https://api.stripe.com/v1/customers?starting_after=xyz`). If the client follows these URLs verbatim, the request bypasses ShieldNode and lands on the upstream with a `sk_live_...` virtual key it cannot understand → `401`. Two correct patterns:
+- **Pagination breaks with `401` after the first page (Stripe, GitHub, Shopify, Notion, Algolia)** — Many APIs return absolute URLs in their `Link` response header or in JSON fields like `next_url`, `next`, or `cursor.next_url`, pointing at the upstream domain (e.g. `https://api.stripe.com/v1/customers?starting_after=xyz`). If the client follows these URLs verbatim, the request bypasses ShieldNode and lands on the upstream with a `shieldnode_...` virtual key it cannot understand → `401`. Two correct patterns:
   1. **Extract just the cursor / page parameter** from the absolute URL and re-use the original ShieldNode base URL: `https://proxy.shieldnode.app/customers?starting_after=xyz`. This is the cleanest approach and what most SDKs do internally if you set their `base_url` to the proxy.
   2. **Rewrite the host** in the absolute URL: replace `https://api.stripe.com/v1` with `https://proxy.shieldnode.app` (path included or not depending on the configured base URL — see [base URL formatting](#base-url-formatting--the-main-pitfall)).
   Hard rule: **never let the next-page request leave for the upstream domain directly.** It will fail and the failure does not appear in ShieldNode logs.
@@ -523,7 +572,7 @@ ShieldNode does the heavy lifting for you. Push approval, instant one-second dis
 
 ### How the agent handles keys
 
-- Virtual keys (`sk_live_...`) travel in the `X-Api-Key` header, not in the URL.
+- Virtual keys (`shieldnode_...`) travel in the `X-Api-Key` header, not in the URL.
 - Real upstream credentials live encrypted on our backend and never come back to a client.
 - When showing code examples, the agent uses placeholders or references the env variable (`$SHIELDNODE_<SERVICE>_KEY`) rather than echoing the actual value.
 
