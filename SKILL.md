@@ -413,8 +413,26 @@ sensible name to give.
 curl -H "X-Api-Key: shieldnode_…" \
      -H "X-Agent-Name: Claude" \
      -H "X-Approval-Duration: 15m" \
+     -H "X-Approval-Reason: deploying the staging build" \
      "https://proxy.shieldnode.app/v1/chat/completions"
 ```
+
+**Giving a reason (optional, recommended):**
+
+Add `X-Approval-Reason: <a few words>` to say *why* you need the key right now.
+It is shown to the user on the push and the approval screen (quoted, as your own
+statement) so they can decide with context. Keep it short and honest — a phrase,
+not a sentence — e.g. `sending the weekly report email`, `reading the customer
+list for the dashboard`, `deploying to staging`. Server-side it is sanitized and
+length-capped (~140 chars); it is display-only and **never** grants or changes
+access.
+
+Two hard rules:
+- **Never put secrets or personal data in the reason** (no keys, tokens, card
+  numbers, names, addresses). It shows on the user's lock screen and in their
+  audit log.
+- **Be truthful.** The reason is how the user judges the request; a misleading
+  reason is the fastest way to get every future request declined.
 
 **Best practice:** if the user gives you guidance like *"for OpenAI ask for
 30 min by default"*, encode that as the header on your first call to that
