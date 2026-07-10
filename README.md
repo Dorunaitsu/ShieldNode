@@ -1,4 +1,4 @@
-# ShieldNode Agent Skill
+# ShieldNode Agent Skill 🛡️
 
 A skill that teaches AI agents to use [ShieldNode](https://shieldnode.app), an API key proxy with push-approval access control for AI agents.
 
