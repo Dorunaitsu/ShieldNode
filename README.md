@@ -71,7 +71,7 @@ The skill is opinionated about behaviour the agent should avoid: spamming the us
 ### Drop into your project
 
 ```bash
-mkdir -p skills && curl -sL https://github.com/RP0-undefined/shieldnode-skill/archive/refs/heads/main.tar.gz \
+mkdir -p skills && curl -sL https://github.com/Dorunaitsu/ShieldNode/archive/refs/heads/main.tar.gz \
   | tar -xz -C skills --strip-components=1
 ```
 
@@ -80,7 +80,7 @@ Most agent runtimes (Claude Code, Cursor, Continue) auto-discover skills under a
 ### Single file
 
 ```bash
-curl -O https://raw.githubusercontent.com/RP0-undefined/shieldnode-skill/main/SKILL.md
+curl -O https://raw.githubusercontent.com/Dorunaitsu/ShieldNode/main/SKILL.md
 ```
 
 Then point your agent at it manually (system prompt, custom instructions).
@@ -88,7 +88,7 @@ Then point your agent at it manually (system prompt, custom instructions).
 ### Git submodule
 
 ```bash
-git submodule add https://github.com/RP0-undefined/shieldnode-skill skills/shieldnode
+git submodule add https://github.com/Dorunaitsu/ShieldNode skills/shieldnode
 ```
 
 ## Try the meta-test
@@ -128,10 +128,10 @@ ShieldNode is API-agnostic. The skill includes worked patterns for AI providers 
 
 This is the public hub for ShieldNode as a whole. If you have used the product or this skill and have something to say:
 
-- **Bug, weird behaviour, unclear error.** [Open an issue](https://github.com/RP0-undefined/shieldnode-skill/issues/new). Even if it is about the dashboard, the proxy, or the docs and not strictly about this repo. Tag it appropriately and we will route it.
+- **Bug, weird behaviour, unclear error.** [Open an issue](https://github.com/Dorunaitsu/ShieldNode/issues/new). Even if it is about the dashboard, the proxy, or the docs and not strictly about this repo. Tag it appropriately and we will route it.
 - **Feature idea or feedback.** Also issues, with the `enhancement` label or freeform.
-- **Improvement to the skill.** [PR](https://github.com/RP0-undefined/shieldnode-skill/pulls) welcome. Keep it narrow (ShieldNode-related). For unrelated agent capabilities, fork.
-- **Question.** [Discussions](https://github.com/RP0-undefined/shieldnode-skill/discussions) if enabled, otherwise an issue is fine.
+- **Improvement to the skill.** [PR](https://github.com/Dorunaitsu/ShieldNode/pulls) welcome. Keep it narrow (ShieldNode-related). For unrelated agent capabilities, fork.
+- **Question.** [Discussions](https://github.com/Dorunaitsu/ShieldNode/discussions) if enabled, otherwise an issue is fine.
 
 Honest, blunt feedback is the most valuable kind. Specific complaints beat vague praise. If something feels off, say so.
 

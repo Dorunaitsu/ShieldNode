@@ -681,8 +681,8 @@ Start by asking the user for the documentation URL.
 
 This skill is open source and versioned on GitHub. New features, endpoint patterns, bug fixes, and behavioural guidance are added there as the product evolves.
 
-- **Repository**: <https://github.com/RP0-undefined/shieldnode-skill>
-- **Raw `SKILL.md`** (single-file refresh): <https://raw.githubusercontent.com/RP0-undefined/shieldnode-skill/main/SKILL.md>
+- **Repository**: <https://github.com/Dorunaitsu/ShieldNode>
+- **Raw `SKILL.md`** (single-file refresh): <https://raw.githubusercontent.com/Dorunaitsu/ShieldNode/main/SKILL.md>
 
 ### When the agent should propose an update
 
@@ -699,12 +699,12 @@ Pick the install path that matches the project:
 
 ```bash
 # Single file
-curl -O https://raw.githubusercontent.com/RP0-undefined/shieldnode-skill/main/SKILL.md
+curl -O https://raw.githubusercontent.com/Dorunaitsu/ShieldNode/main/SKILL.md
 
 # Full repo (replaces the existing skills/shieldnode/ directory)
 rm -rf skills/shieldnode && \
   mkdir -p skills && \
-  curl -sL https://github.com/RP0-undefined/shieldnode-skill/archive/refs/heads/main.tar.gz \
+  curl -sL https://github.com/Dorunaitsu/ShieldNode/archive/refs/heads/main.tar.gz \
   | tar -xz -C skills --strip-components=1
 
 # Git submodule
