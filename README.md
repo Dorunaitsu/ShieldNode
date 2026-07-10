@@ -1,3 +1,6 @@
+> [!CAUTION]
+> **This repository has moved.** The maintained ShieldNode skill now lives at **[github.com/Dorunaitsu/ShieldNode](https://github.com/Dorunaitsu/ShieldNode)**. Please update your links, submodules, and `raw` URLs. This copy stays online so existing links keep working, but it is no longer the source of truth.
+
 # ShieldNode Agent Skill
 
 A skill that teaches AI agents to use [ShieldNode](https://shieldnode.app), an API key proxy with push-approval access control for AI agents.
