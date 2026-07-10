@@ -139,8 +139,8 @@ Honest, blunt feedback is the most valuable kind. Specific complaints beat vague
 
 - Product: [shieldnode.app](https://shieldnode.app)
 - Docs: [shieldnode.app/docs](https://shieldnode.app/docs)
-- Get the app: [shieldnode.app/get-app](https://shieldnode.app/get-app) (auto-detects your platform and links to App Store or Play Store)
-- Mobile waitlist + Nexus waitlist: [shieldnode.app/waitlist](https://shieldnode.app/waitlist)
+- Get the app: [App Store](https://apps.apple.com/app/shieldnode-api-keys-for-ai/id6763352321) · [Google Play](https://play.google.com/store/apps/details?id=app.shieldnode.mobileandroid)
+- Nexus waitlist: [shieldnode.app/waitlist](https://shieldnode.app/waitlist)
 
 ## License
 
