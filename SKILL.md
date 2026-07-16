@@ -571,8 +571,8 @@ curl -H "X-Api-Key: shieldnode_…" \
 **Behaviour once approved:** during each window your normal proxied calls return
 `200` with no push. **Outside** the window the key behaves as usual: a call gets the
 standard `403 approval_required` push flow. A correctly-timed cron always fires
-inside its own window, so a well-configured schedule never hits that 403 — and you
-set the time yourself, so you already know when your window is. Do not rely on the
+inside its own window, so a well-configured schedule never hits that 403, and since
+you set the time yourself you already know when your window is. Do not rely on the
 server to tell you the next open time: for security it is never returned to a key
 holder (it would tell anyone with a leaked key exactly when to use it). The user
 sees the next run time in the ShieldNode app.
