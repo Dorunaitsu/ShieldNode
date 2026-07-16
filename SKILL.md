@@ -511,6 +511,90 @@ data = call_with_approval("/v1/chat/completions",
 4. **Distinguish denial from timeout** when surfacing to the user. *"You declined"* and *"You didn't respond in 5 min"* are very different signals.
 5. **Don't retry past the timeout.** If the user didn't approve in 5 min, they meant it. Ask them in chat whether to retry instead of looping.
 
+### Scheduled access windows (for recurring cron jobs)
+
+Use this instead of push approval when your workload runs on a **fixed schedule**
+(a cron job, a nightly batch, a job every weekday at 09:00). Rather than firing a
+push every run and waiting for a tap, you ask **once** for a recurring window. The
+user approves it on their phone, and from then on your calls during that window
+just succeed (`200`) with no push and no polling.
+
+Prefer a schedule when: the job runs unattended at a known time, or repeatedly on
+the same cadence. Prefer plain push approval (above) for one-off, ad-hoc, or
+interactive access.
+
+**Request a window:**
+
+```bash
+curl -X POST "https://proxy.shieldnode.app/_shieldnode/schedule-request" \
+     -H "X-Api-Key: shieldnode_…" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "time": "03:00",
+       "timezone": "Europe/Paris",
+       "days": ["mon", "tue", "wed", "thu", "fri"],
+       "duration_minutes": 30,
+       "agent_name": "Claude",
+       "reason": "nightly analytics sync"
+     }'
+```
+
+Body fields:
+
+| field | required | meaning |
+|-------|----------|---------|
+| `time` | yes | Start time `HH:MM`, the wall-clock time your cron fires, in `timezone`. |
+| `timezone` | yes | IANA zone, e.g. `Europe/Paris`, `America/New_York`, or `UTC`. Use the zone your cron actually runs in (GitHub Actions is `UTC`). The window is stored as wall-clock time, so it survives daylight-saving changes. |
+| `days` | no | Subset of `mon`..`sun`. Default is every day. |
+| `duration_minutes` | no | How long the window stays open after `time`. Default 30, clamped to [5, 1440]. The window also opens 5 min *before* `time` as a lead. Size it to your job's real runtime. |
+| `agent_name` | no | Same as `X-Agent-Name`, shown on the approval screen. |
+| `reason` | no | Same rules as `X-Approval-Reason`: short, honest, no secrets. |
+
+**Response** is `202` with a `request_id`:
+
+```json
+{ "status": "pending", "request_id": "…", "message": "Awaiting user approval on ShieldNode mobile", "poll_interval_seconds": 60 }
+```
+
+The user approves (and may edit the time / days / duration) on ShieldNode mobile.
+You do not have to wait: either poll the request, or simply start calling the proxy
+during your window once it is approved.
+
+**Poll the request (optional):**
+
+```bash
+curl -H "X-Api-Key: shieldnode_…" \
+     "https://proxy.shieldnode.app/_shieldnode/schedule-request/<request_id>"
+# -> { "request_id": "…", "status": "pending" | "approved" | "declined" | "expired", "schedule_id": "…" }
+```
+
+**Behaviour once approved:** during each window your normal proxied calls return
+`200` with no push. **Outside** the window the key behaves as usual: a call gets the
+standard `403 approval_required` push flow. A correctly-timed cron always fires
+inside its own window, so a well-configured schedule never hits that 403 — and you
+set the time yourself, so you already know when your window is. Do not rely on the
+server to tell you the next open time: for security it is never returned to a key
+holder (it would tell anyone with a leaked key exactly when to use it). The user
+sees the next run time in the ShieldNode app.
+
+`whoami` tells you only whether a call works **right now** (`active` and
+`requires_approval`), not the schedule itself. If `active` is true, call; if not,
+either wait for your known window or fall back to the push-approval flow.
+
+**Rules of thumb:**
+
+1. **Ask once.** A pending request is reused for identical repeats; do not loop the
+   endpoint. At most 3 distinct pending requests per key are allowed.
+2. **Match `duration_minutes` to the job.** There is no idle cutoff, so a long job
+   with gaps between calls will not be cut off mid-run, but an over-long window is
+   needless standing access.
+3. **Get the timezone right.** It is the single most common mistake. State the zone
+   your scheduler runs in, not the user's.
+4. **A schedule is not a hard grant.** The user can disable or delete it anytime,
+   and an emergency stop disables every schedule at once. Always keep the normal
+   push-approval flow as a fallback in your code path for when a window is closed
+   or a schedule was revoked.
+
 ### Diagnostic checklist
 
 1. **Check the dashboard logs** — Service → tab **Logs**. If a request isn't there, it never reached the proxy → issue is client-side (bad key, bad URL, network).
