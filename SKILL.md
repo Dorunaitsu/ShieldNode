@@ -546,7 +546,7 @@ Body fields:
 | `time` | yes | Start time `HH:MM`, the wall-clock time your cron fires, in `timezone`. |
 | `timezone` | yes | IANA zone, e.g. `Europe/Paris`, `America/New_York`, or `UTC`. Use the zone your cron actually runs in (GitHub Actions is `UTC`). The window is stored as wall-clock time, so it survives daylight-saving changes. |
 | `days` | no | Subset of `mon`..`sun`. Default is every day. |
-| `duration_minutes` | no | How long the window stays open after `time`. Default 30, clamped to [5, 1440]. The window also opens 5 min *before* `time` as a lead. Size it to your job's real runtime. |
+| `duration_minutes` | no | How long the window stays open after `time`. Default 10, clamped to [5, 1440]. The window also opens 5 min *before* `time` as a lead. Size it to your job's real runtime. |
 | `agent_name` | no | Same as `X-Agent-Name`, shown on the approval screen. |
 | `reason` | no | Same rules as `X-Approval-Reason`: short, honest, no secrets. |
 
@@ -594,6 +594,59 @@ either wait for your known window or fall back to the push-approval flow.
    and an emergency stop disables every schedule at once. Always keep the normal
    push-approval flow as a fallback in your code path for when a window is closed
    or a schedule was revoked.
+
+### Proposing a new service (config request)
+
+When the user wants to use an API they have NOT configured in ShieldNode yet, you
+can PROPOSE the service for them instead of asking them to fill the dashboard form.
+The user gets a push, opens the app on a pre-filled config page, types only their
+own upstream key, and approves. You never see or send that key.
+
+**You need a config key.** It is a key on the built-in "ShieldNode" service (top
+of the user's service list, always present). Its prefix is `shieldnode_config_`.
+Ask the user to open ShieldNode, pick the **ShieldNode** service, create a key,
+and paste it to you. It is not a proxy key and only works on the endpoint below.
+
+**Propose the service:**
+
+```bash
+curl -X POST "https://proxy.shieldnode.app/_shieldnode/config-request" \
+     -H "X-Api-Key: shieldnode_config_…" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "Stripe",
+       "base_url": "https://api.stripe.com",
+       "detected_auth_method": { "method": "header_bearer" },
+       "credential_labels": ["API key"],
+       "agent_name": "Claude",
+       "reason": "creating invoices for the user"
+     }'
+```
+
+Body fields:
+
+| field | required | meaning |
+|-------|----------|---------|
+| `name` | yes | Human-readable service name. |
+| `base_url` | yes | Upstream root URL (no trailing slash). SSRF-validated server-side. |
+| `detected_auth_method` | no | What you know of the API's auth, e.g. `{"method":"header_bearer"}`, `{"method":"header_x_api_key","header_name":"X-API-Key"}`, `{"method":"query_param","param_name":"api_key"}`, `{"method":"basic_auth"}`. If omitted, ShieldNode fills it from its knowledge base or the user picks it. |
+| `credential_labels` | no | Names of the fields the user must fill, e.g. `["API key"]` or `["Client ID","Client secret"]`. |
+| `agent_name` | no | Shown on the approval screen. |
+| `reason` | no | Short, honest, no secrets. Shown to the user. |
+
+**NEVER put the user's upstream API key in this request.** You propose only the
+non-secret shape. The user types their real key at approval time in the app.
+
+**Response** is `202` with a `request_id`; poll it:
+
+```bash
+curl -H "X-Api-Key: shieldnode_config_…" \
+     "https://proxy.shieldnode.app/_shieldnode/config-request/<request_id>"
+# -> { "request_id": "…", "status": "pending" | "approved" | "declined" | "expired", "service_id": "…" }
+```
+
+Once `approved`, the service exists. The user creates a normal virtual key on it
+(or you ask them to) and you use that key with the proxy exactly as usual.
 
 ### Diagnostic checklist
 
