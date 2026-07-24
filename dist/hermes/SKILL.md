@@ -9,13 +9,6 @@ metadata:
   hermes:
     tags: [security, secrets, api-keys, proxy, approval]
     category: security
-setup:
-  help: "Create a free account at https://shieldnode.app, add a service, then create a virtual key on it. The key is shown once."
-  collect_secrets:
-    - env_var: SHIELDNODE_KEY
-      prompt: "ShieldNode virtual key (starts with shieldnode_)"
-      provider_url: "https://shieldnode.app"
-      secret: true
 ---
 
 # ShieldNode
@@ -45,7 +38,7 @@ The user can leave the key **disabled** by default. Hermes then gets a push appr
 
 ## Setup
 
-Hermes collects `SHIELDNODE_KEY` at install time and injects it as an env var. To add it manually, or to add more services, put it in `~/.hermes/.env`:
+Create a free account at [shieldnode.app](https://shieldnode.app), add a service, and create a virtual key on it. The key is shown once. Put it in `~/.hermes/.env`:
 
 ```env
 SHIELDNODE_KEY=shieldnode_...

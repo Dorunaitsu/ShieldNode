@@ -16,7 +16,7 @@ Deltas from canonical, kept deliberately small:
 
 | Delta | Why |
 |---|---|
-| Frontmatter gains `version`, `author`, `license`, `platforms`, `metadata.hermes`, `setup.collect_secrets` | Hermes catalog schema. `collect_secrets` makes Hermes prompt for `SHIELDNODE_KEY` at install. |
+| Frontmatter gains `version`, `author`, `license`, `platforms`, `metadata.hermes` | Hermes catalog schema, matching neighbouring skills. |
 | `description` shortened to one action-oriented line | Catalog style is 5 to 15 words. |
 | `X-Agent-Name: Hermes` in every example | Pushes then read "Hermes is requesting access". |
 | Setup section uses `~/.hermes/.env` | Their secrets model. |
