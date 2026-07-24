@@ -68,13 +68,11 @@ Once the skill is loaded, the agent knows how to:
 
 The skill is opinionated about behaviour the agent should avoid: spamming the user with retry messages, requesting absurd approval durations, retrying after an explicit decline. Those rules exist because the worst case for this product is an agent that makes you regret approving anything.
 
-## What it costs
+## What you get for free
 
-The free tier is meant to be genuinely usable, not a teaser: **2 services, 3 virtual keys per service, 500 requests a month**, push approval and scheduled windows included. No card required.
+**2 services, 3 virtual keys per service, 500 requests a month**, with push approval and scheduled windows included. No card required. Paid plans lift the limits.
 
-Pro is **$9.99/month or $69.99/year** and lifts that to unlimited services and keys, 100,000 requests a month, longer log retention, the emergency stop and endpoint restrictions. Request packs cover one-off spikes.
-
-You can also try the whole flow without any API key at all: every account is seeded with a keyless demo service (`Cool Dogs — Playground`, upstream `dog.ceo`).
+You can try the whole flow without any API key at all: every account is seeded with a keyless demo service (`Cool Dogs — Playground`, upstream `dog.ceo`).
 
 ## Install
 

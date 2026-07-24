@@ -2,7 +2,7 @@
 name: shieldnode
 description: Call APIs through a proxy that holds the real keys, with push approval on your phone.
 version: 1.0.0
-author: Dorunaitsu
+author: RP0-undefined
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
