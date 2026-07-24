@@ -4,52 +4,41 @@ description: Call APIs through a proxy that holds the real keys, with push appro
 version: 1.0.0
 author: RP0-undefined
 license: MIT
-platforms: [linux, macos, windows]
+platforms: [macos, linux, windows]
 metadata:
   hermes:
-    tags: [security, secrets, api-keys, proxy, approval]
+    tags: [Security, Secrets, API Keys, Proxy, Approval]
     category: security
-setup:
-  help: |-
-    ShieldNode keeps your real API keys in an encrypted vault and gives this agent a virtual key instead, so a leaked key is worthless.
-
-    1. Create a free account at https://shieldnode.app. The free tier is 2 services, 3 virtual keys per service, and 500 requests a month, no card required.
-    2. Add a service, then create a virtual key on it. The key is shown once, so copy it straight away.
-    3. Install the mobile app from https://shieldnode.app/get-app. It is how you approve access by push, and how you run the emergency stop that disables every key at once. Without it, a disabled key simply fails instead of asking you.
-
-    New accounts come with a keyless demo service, so you can test the whole flow, approvals included, before wiring up a real API.
-
-    Store each key in ~/.hermes/.env as SHIELDNODE_<SERVICE>_KEY, one per service.
 ---
 
 # ShieldNode
 
-Use this skill when the user wants an API called without the real credential ever reaching the agent. ShieldNode keeps their key in an encrypted vault and gives Hermes a **virtual key** instead. Hermes calls the proxy, the proxy injects the real credential, the upstream API answers.
+ShieldNode keeps the user's real API keys in an encrypted vault and gives this agent a **virtual key** instead. You call the proxy, it injects the real credential, the upstream API answers. The real key never reaches you, so a leaked virtual key is worthless on its own.
 
 ```
 Hermes --X-Api-Key: shieldnode_...--> proxy.shieldnode.app/{path} --real key--> api.upstream.com/{path}
 ```
 
-The user can leave the key **disabled** by default. Hermes then gets a push approval on their phone, they tap Approve for a bounded window, and the call goes through. A leaked virtual key is inert until its owner says otherwise.
-
-## Requirements
-
-- A ShieldNode account (free tier: 2 services, 3 keys per service, 500 requests a month)
-- At least one virtual key in `~/.hermes/.env`
-- The ShieldNode mobile app (iOS/Android) for push approval. Without it, a disabled key simply fails.
+The user can leave a key **disabled** by default. Your call then triggers a push notification on their phone, they approve it for a bounded window, and the call goes through.
 
 ## When to Use
 
 - The user hands you a value starting with `shieldnode_`
 - Calling any API the user has put behind ShieldNode
 - A call returns `403 approval_required`
-- Setting up recurring access for a cron job
+- Setting up recurring access for a cron job or scheduled task
 - The user wants to use an API they have not configured yet
 - Debugging proxy errors, especially unexpected 404s
 
-## Setup
+## Prerequisites
 
-Keys live in `~/.hermes/.env`, one per service. Nothing else to install:
+A ShieldNode account. The free tier is **2 services, 3 virtual keys per service, and 500 requests a month**, no card required.
+
+**Get the app first: https://shieldnode.app/get-app** (iOS and Android). The account is created there, and the app is what makes the product work end to end: it delivers the approval notifications, and it is where the user approves the services this agent proposes. Without it, a disabled key simply fails instead of asking them.
+
+There is a web dashboard at https://shieldnode.app for anyone who prefers a browser, but push approval and agent-driven service setup both need the app.
+
+Keys live in `~/.hermes/.env`, one per service, and nothing else needs installing:
 
 ```env
 SHIELDNODE_STRIPE_KEY=shieldnode_...
@@ -57,15 +46,15 @@ SHIELDNODE_OPENAI_KEY=shieldnode_...
 SHIELDNODE_CONFIG_KEY=shieldnode_config_...
 ```
 
-One virtual key maps to one service, hence `SHIELDNODE_<SERVICE>_KEY`. The optional `SHIELDNODE_CONFIG_KEY` unlocks proposing new services (see below). Values can also be mapped from Bitwarden or 1Password if the user manages secrets there. No ShieldNode-specific tooling is needed: it is a plain HTTPS call with a header.
+One virtual key maps to one service, hence `SHIELDNODE_<SERVICE>_KEY`. The optional `SHIELDNODE_CONFIG_KEY` unlocks proposing new services. Values can also be mapped in from Bitwarden or 1Password. Examples below write `$SHIELDNODE_KEY` as shorthand for whichever service variable applies.
 
-The examples below write `$SHIELDNODE_KEY` as shorthand for whichever `SHIELDNODE_<SERVICE>_KEY` applies to the call you are making.
+New accounts come with a keyless demo service, so the whole flow including approvals can be tested before wiring up a real API.
 
-Never write a key value into a file the user commits, and never print one back into the conversation.
+## How to Run
 
-## Hermes Execution Pattern
+Everything is a plain HTTPS call through the `terminal` tool. There is no CLI to install.
 
-Resolve an unknown key **before** doing anything else, in one call. Do not ask the user which service it belongs to.
+Resolve an unknown key **first**, in one call. Do not ask the user which service it belongs to:
 
 ```bash
 curl -sS -H "X-Api-Key: $SHIELDNODE_KEY" \
@@ -84,9 +73,9 @@ curl -sS -H "X-Api-Key: $SHIELDNODE_KEY" \
 }
 ```
 
-That tells you the upstream, the configured `base_url` (which fixes your path convention), and whether the next call goes straight through (`active: true`) or will trigger an approval push. whoami never returns credentials, is never forwarded upstream, and fires no push.
+That gives you the upstream, the configured `base_url` (which fixes your path convention) and whether the next call goes straight through (`active: true`) or triggers an approval push. whoami never returns credentials, is never forwarded upstream, and fires no push.
 
-Then call the API:
+Then call the API, always identifying yourself:
 
 ```bash
 curl -sS -H "X-Api-Key: $SHIELDNODE_KEY" \
@@ -94,28 +83,35 @@ curl -sS -H "X-Api-Key: $SHIELDNODE_KEY" \
      "https://proxy.shieldnode.app/<API_PATH>"
 ```
 
-### The base URL trap
+## Quick Reference
 
-The proxy appends your path **verbatim** to the configured base URL. A version prefix already in the base URL must not be repeated. For an upstream `https://api.example.com/v1/users`:
-
-| Base URL on the service | Correct proxy call |
+| Header | Purpose |
 |---|---|
-| `https://api.example.com/v1` | `https://proxy.shieldnode.app/users` |
-| `https://api.example.com` | `https://proxy.shieldnode.app/v1/users` |
+| `X-Api-Key` | The virtual key. Required on every call. |
+| `X-Agent-Name: Hermes` | Makes the push read "Hermes is requesting access" instead of "An external agent". Send it always. |
+| `X-Approval-Duration` | How long you need. Clamped to [1, 1440] minutes. Accepts `30`, `15m`, `2h`. |
+| `X-Approval-Reason` | Short honest phrase shown to the user. Never put secrets in it. |
 
-Take `base_url` from whoami, subtract it from the full upstream URL, and what remains goes after `proxy.shieldnode.app/`. This causes nearly every unexpected 404, so check it first.
+| Code | Meaning | Action |
+|---|---|---|
+| 401 | Key invalid or expired | Check it in the app |
+| 403 | Disabled, over quota, or path not allowlisted | See Procedure below |
+| 404 | Path missing upstream | Check the base URL pitfall first |
+| 429 | Rate limited | Wait, or raise the key's limit |
+| 413 | Body over the 90 MB cap | Use a signed-URL upload |
+| 502 / 504 | Cold start or slow upstream | Wait 30s, then test the upstream directly |
 
-## Push Approval
+## Procedure
 
-A disabled key whose owner has the mobile app returns a structured 403 instead of a plain failure.
+### Push approval
 
-| Response body `error` | What to do |
+A disabled key whose owner has the app returns a structured 403 rather than a plain failure.
+
+| `error` in the body | What to do |
 |---|---|
 | `approval_required` | The user got a push. Wait `poll_interval_seconds` (default 30s), retry, up to `timeout_seconds` (default 5 min). |
 | `approval_denied` | Stop. Report "User declined access on ShieldNode mobile." Do not retry on your own. |
-| `key_disabled` | No mobile app registered. Surface and stop. |
-
-Headers that matter:
+| `key_disabled` | No app registered. Surface and stop. |
 
 ```bash
 curl -sS -H "X-Api-Key: $SHIELDNODE_KEY" \
@@ -125,15 +121,11 @@ curl -sS -H "X-Api-Key: $SHIELDNODE_KEY" \
      "https://proxy.shieldnode.app/emails"
 ```
 
-- **`X-Agent-Name: Hermes`** on every call. The push then reads "Hermes is requesting access" instead of "An external agent". Named requests get approved, generic ones get ignored.
-- **`X-Approval-Duration`** sized to the job. Clamped to [1, 1440] minutes. Accepts `30`, `15m`, `2h`.
-- **`X-Approval-Reason`**, a short honest phrase. It shows on the user's lock screen, so never put secrets or personal data in it.
+Full polling loop in code: `references/approval-recipe.md`.
 
-Full polling implementation: `references/approval-recipe.md`.
+### Scheduled windows for recurring jobs
 
-## Scheduled Windows
-
-For a cron or a nightly batch, ask **once** for a recurring window instead of firing a push every run. Inside the window, calls return 200 with no push and no polling.
+For a cron or nightly batch, ask **once** for a recurring window instead of firing a push every run. Inside the window, calls return 200 with no push and no polling.
 
 ```bash
 curl -sS -X POST "https://proxy.shieldnode.app/_shieldnode/schedule-request" \
@@ -142,15 +134,15 @@ curl -sS -X POST "https://proxy.shieldnode.app/_shieldnode/schedule-request" \
           "duration_minutes":30,"agent_name":"Hermes","reason":"nightly analytics sync"}'
 ```
 
-`time` and `timezone` are required. Use the zone **your scheduler** runs in, not the user's: that is the most common mistake. `duration_minutes` defaults to 10, clamped to [5, 1440], and the window opens 5 minutes early as a lead. Returns `202` with a `request_id` you can poll at `/_shieldnode/schedule-request/<request_id>`.
+`time` and `timezone` are required. Use the zone **your scheduler** runs in, not the user's. `duration_minutes` defaults to 10, clamped to [5, 1440], and the window opens 5 minutes early as a lead. Returns `202` with a `request_id`, pollable at `/_shieldnode/schedule-request/<request_id>`.
 
-The server never tells you the next open time, by design. You set the schedule, so you already know it. Outside the window the key falls back to the normal push flow, so keep that path in your code.
+The server never reveals the next open time, by design: that would tell anyone holding a leaked key exactly when to use it. You set the schedule, so you already know it.
 
-## Proposing a New Service
+### Proposing a new service
 
-When the user wants an API that is not in their ShieldNode account yet, propose it rather than walking them through a form. They get a push, open a prefilled screen, type only their own credential, and approve. **You never see that credential.**
+When the user wants an API that is not in their account yet, propose it rather than walking them through a form. They get a push, open a prefilled screen, type only their own credential, and approve. **You never see that credential.**
 
-This needs a **config key** (prefix `shieldnode_config_`), created on the built-in "ShieldNode" service at the top of their service list. Ask them for one and store it as `SHIELDNODE_CONFIG_KEY`.
+Needs a config key (prefix `shieldnode_config_`), created on the built-in ShieldNode service at the top of their service list.
 
 ```bash
 curl -sS -X POST "https://proxy.shieldnode.app/_shieldnode/config-request" \
@@ -161,35 +153,51 @@ curl -sS -X POST "https://proxy.shieldnode.app/_shieldnode/config-request" \
           "agent_name":"Hermes","reason":"creating invoices for the user"}'
 ```
 
-Fill `base_url` and `detected_auth_method` from what you know about the API, or from its docs. Poll `/_shieldnode/config-request/<request_id>` until `approved`, then ask the user for a normal virtual key on the new service.
+Fill `base_url` and `detected_auth_method` from what you know about the API, or from its docs. Poll `/_shieldnode/config-request/<request_id>` until `approved`, then ask the user for a virtual key on the new service.
 
 **Never put the user's upstream API key in this request.** You propose the non-secret shape only.
 
-One service maps to one base URL, so APIs spanning subdomains (Twilio, Shopify Admin plus Storefront) need one service each.
+## Pitfalls
 
-## Status Codes
+**The base URL trap causes nearly every unexpected 404.** The proxy appends your path verbatim to the configured base URL, so a version prefix already in the base URL must not be repeated. For an upstream `https://api.example.com/v1/users`:
 
-| Code | Meaning | Action |
-|---|---|---|
-| 401 | Virtual key invalid or expired | Check the key in the dashboard |
-| 403 | Disabled, over quota, or path not allowlisted | See Push Approval above |
-| 404 | Path missing upstream | Check the base URL trap first |
-| 429 | Rate limited | Wait, or raise the key's limit |
-| 413 | Body over the 90 MB cap | Use a signed-URL upload |
-| 502 / 504 | Cold start or slow upstream | Wait 30s, then test the upstream directly |
+| Base URL on the service | Correct proxy call |
+|---|---|
+| `https://api.example.com/v1` | `https://proxy.shieldnode.app/users` |
+| `https://api.example.com` | `https://proxy.shieldnode.app/v1/users` |
 
-## Guardrails
+Take `base_url` from whoami, subtract it from the full upstream URL, and what remains goes after `proxy.shieldnode.app/`.
+
+Other things that bite:
+
+- **One service maps to one base URL.** APIs spanning subdomains (Twilio, Shopify Admin plus Storefront) need one service each, with their own key.
+- **Absolute next-page URLs break pagination.** Following a `Link` header verbatim sends the request to the upstream with a virtual key it cannot read, giving a 401 that never appears in ShieldNode logs. Reuse the proxy base with the cursor parameter instead.
+- **A 403 with `error code: 1010` in the body is a Cloudflare client-fingerprint block on the upstream, not an IP ban.** Routing through ShieldNode is the fix, since the proxy makes the outbound call.
+- Every proxy response carries `cf-ray` and `server: cloudflare` headers because the proxy sits behind Cloudflare. That is normal and does not mean you were blocked.
+
+More in `references/troubleshooting.md`.
+
+### Behaviour rules
 
 - Never print a virtual key back to the user, and never ask them to paste one into the chat. They put it in `~/.hermes/.env` themselves.
 - Tell the user **once** that an approval is pending, then poll silently. A message every 30 seconds feels like spyware.
 - Never retry after an explicit decline, and never retry past the timeout. Ask the user instead.
-- Do not fire parallel calls to force an approval. Pushes are debounced to 1 per 30s per key, and parallel calls wait on the same approval anyway.
+- Do not fire parallel calls to force an approval. Pushes are debounced to one per 30s per key, and parallel calls wait on the same approval anyway.
 - Distinguish a decline from a timeout when reporting back. They mean different things to the user.
-- Never put secrets or personal data in `X-Approval-Reason`, and keep it truthful. It is how the user decides.
+- Keep `X-Approval-Reason` truthful. It is how the user decides, and a misleading one gets every future request declined.
 
-## Testing Without a Real API
+## Verification
 
-Every ShieldNode account is seeded with a keyless demo service, `Cool Dogs — Playground` (upstream `dog.ceo`). Use it to verify the whole flow, including approval, before touching a real credential.
+Confirm the setup end to end without touching a real API, using the keyless demo service seeded on every account:
+
+```bash
+curl -sS -H "X-Api-Key: $SHIELDNODE_KEY" \
+  "https://proxy.shieldnode.app/_shieldnode/whoami"
+```
+
+A `200` with a `service` field means the key resolves. If `active` is `true`, a normal proxied call should return `200`. If `requires_approval` is `true`, the same call returns `403 approval_required` and a push lands on the user's phone, which confirms the whole chain.
+
+An invalid key returns `401 invalid_key`.
 
 ## References
 
