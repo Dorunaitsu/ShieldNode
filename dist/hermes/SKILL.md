@@ -9,6 +9,20 @@ metadata:
   hermes:
     tags: [security, secrets, api-keys, proxy, approval]
     category: security
+setup:
+  help: |-
+    ShieldNode keeps your real API keys in an encrypted vault and gives this agent a virtual key instead, so a leaked key is worthless.
+
+    1. Create a free account at https://shieldnode.app. The free tier is 2 services, 3 virtual keys per service, and 500 requests a month, no card required.
+    2. Add a service, then create a virtual key on it. The key is shown once, so copy it straight away.
+    3. Install the mobile app from https://shieldnode.app/get-app. It is how you approve access by push, and how you run the emergency stop that disables every key at once. Without it, a disabled key simply fails instead of asking you.
+
+    New accounts come with a keyless demo service, so you can test the whole flow, approvals included, before wiring up a real API.
+  collect_secrets:
+    - env_var: SHIELDNODE_KEY
+      prompt: "ShieldNode virtual key (starts with shieldnode_)"
+      provider_url: "https://shieldnode.app"
+      secret: true
 ---
 
 # ShieldNode
@@ -38,7 +52,7 @@ The user can leave the key **disabled** by default. Hermes then gets a push appr
 
 ## Setup
 
-Create a free account at [shieldnode.app](https://shieldnode.app), add a service, and create a virtual key on it. The key is shown once. Put it in `~/.hermes/.env`:
+Hermes prompts for `SHIELDNODE_KEY` when the skill is first enabled. To set it by hand, or to add more services later, put the values in `~/.hermes/.env`:
 
 ```env
 SHIELDNODE_KEY=shieldnode_...
