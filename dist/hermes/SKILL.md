@@ -50,7 +50,7 @@ SHIELDNODE_CONFIG_KEY=shieldnode_config_...
 
 One virtual key maps to one service, hence `SHIELDNODE_<SERVICE>_KEY`. The optional `SHIELDNODE_CONFIG_KEY` unlocks proposing new services. Values can also be mapped in from Bitwarden or 1Password. Examples below write `$SHIELDNODE_KEY` as shorthand for whichever service variable applies.
 
-New accounts come with a keyless demo service, so the whole flow including approvals can be tested before wiring up a real API.
+New accounts come with a keyless demo service, so the whole flow including approvals can be tested before wiring up a real API. Ask the user for a key on it, resolve it with whoami like any other, and you have everything you need: no configuration, and no credential involved anywhere.
 
 ## How to Run
 
@@ -192,7 +192,7 @@ More in `references/troubleshooting.md`.
 
 ## Verification
 
-Confirm the setup end to end without touching a real API, using the keyless demo service seeded on every account:
+Confirm the setup end to end without touching a real API, using a key on the keyless demo service seeded on every account:
 
 ```bash
 curl -sS -H "X-Api-Key: $SHIELDNODE_KEY" \

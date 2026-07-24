@@ -210,7 +210,7 @@ Once approved the service exists. Ask the user for a normal virtual key on it, t
 
 **One service = one base URL.** APIs spanning subdomains (Twilio `api.` + `video.`, Shopify Admin + Storefront, each AWS service) need one service per subdomain, each with its own key. Name them clearly (`twilio-rest`, `twilio-video`).
 
-**Testing without any real API?** Every account is auto-seeded with a keyless demo service, **Cool Dogs — Playground** (upstream `dog.ceo`). For a test, a key check, or a demo, skip configuration entirely and use it: [services/cool-dogs-playground.md](services/cool-dogs-playground.md).
+**Testing without any real API?** Every account is auto-seeded with a keyless demo service, **Cool Dogs — Playground** (upstream `dog.ceo`). For a test, a key check, or a demo, skip configuration entirely and use it: do not create a service and do not fetch any docs, just ask for a key on it and read [services/cool-dogs-playground.md](services/cool-dogs-playground.md).
 
 ## 6. Status codes
 
@@ -252,7 +252,7 @@ Load these only when the task calls for them.
 
 ## Updating this skill
 
-Repository: <https://github.com/Dorunaitsu/ShieldNode>. Propose a refresh when the user mentions a ShieldNode feature this file does not cover, when you hit a pattern that is not documented here, or when this file looks more than a couple of months old.
+Repository: <https://github.com/Dorunaitsu/ShieldNode>. Propose a refresh when the user mentions a ShieldNode feature this file does not cover, when you hit a pattern that is not documented here, when a user reports a bug or an unclear instruction that turns out to be a skill issue rather than a product one, or when this file looks more than a couple of months old.
 
 ```bash
 # single file

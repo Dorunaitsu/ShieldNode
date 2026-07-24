@@ -19,7 +19,7 @@ end-to-end (virtual key → proxy → upstream → logs). Use it to:
 - **Original API base URL** (already set in the seeded service config): https://dog.ceo/api
 - **Auth header for proxy calls**: `X-Api-Key: $SHIELDNODE_PLAYGROUND_KEY`
   > **Never** write the actual key value in this file. Reference the env variable only.
-  > Loaded from `.env` (variable name: `SHIELDNODE_PLAYGROUND_KEY`).
+  > Loaded from `~/.hermes/.env` (variable name: `SHIELDNODE_PLAYGROUND_KEY`).
 - **Effective call pattern**: `https://proxy.shieldnode.app/<endpoint-path>`
   > The configured base URL already includes `/api`, so the path appended to
   > the proxy is just the endpoint (no `/api` prefix). E.g. upstream
