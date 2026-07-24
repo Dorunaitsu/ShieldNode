@@ -18,11 +18,8 @@ setup:
     3. Install the mobile app from https://shieldnode.app/get-app. It is how you approve access by push, and how you run the emergency stop that disables every key at once. Without it, a disabled key simply fails instead of asking you.
 
     New accounts come with a keyless demo service, so you can test the whole flow, approvals included, before wiring up a real API.
-  collect_secrets:
-    - env_var: SHIELDNODE_KEY
-      prompt: "ShieldNode virtual key (starts with shieldnode_)"
-      provider_url: "https://shieldnode.app"
-      secret: true
+
+    Store each key in ~/.hermes/.env as SHIELDNODE_<SERVICE>_KEY, one per service.
 ---
 
 # ShieldNode
@@ -38,7 +35,7 @@ The user can leave the key **disabled** by default. Hermes then gets a push appr
 ## Requirements
 
 - A ShieldNode account (free tier: 2 services, 3 keys per service, 500 requests a month)
-- A virtual key in `SHIELDNODE_KEY`
+- At least one virtual key in `~/.hermes/.env`
 - The ShieldNode mobile app (iOS/Android) for push approval. Without it, a disabled key simply fails.
 
 ## When to Use
@@ -52,15 +49,17 @@ The user can leave the key **disabled** by default. Hermes then gets a push appr
 
 ## Setup
 
-Hermes prompts for `SHIELDNODE_KEY` when the skill is first enabled. To set it by hand, or to add more services later, put the values in `~/.hermes/.env`:
+Keys live in `~/.hermes/.env`, one per service. Nothing else to install:
 
 ```env
-SHIELDNODE_KEY=shieldnode_...
 SHIELDNODE_STRIPE_KEY=shieldnode_...
 SHIELDNODE_OPENAI_KEY=shieldnode_...
+SHIELDNODE_CONFIG_KEY=shieldnode_config_...
 ```
 
-One virtual key maps to one service, so use `SHIELDNODE_<SERVICE>_KEY` once the user has more than one. The values can also be mapped from Bitwarden or 1Password if the user manages secrets there. No ShieldNode-specific tooling is needed: it is a plain HTTPS call with a header.
+One virtual key maps to one service, hence `SHIELDNODE_<SERVICE>_KEY`. The optional `SHIELDNODE_CONFIG_KEY` unlocks proposing new services (see below). Values can also be mapped from Bitwarden or 1Password if the user manages secrets there. No ShieldNode-specific tooling is needed: it is a plain HTTPS call with a header.
+
+The examples below write `$SHIELDNODE_KEY` as shorthand for whichever `SHIELDNODE_<SERVICE>_KEY` applies to the call you are making.
 
 Never write a key value into a file the user commits, and never print one back into the conversation.
 
