@@ -1,6 +1,6 @@
 # Manual setup in the dashboard
 
-The agent path for adding a service is the config request in SKILL.md §5: propose it, the user approves on their phone and types only the credential. Use this file when the user wants to do it by hand instead, or asks how the dashboard works.
+The agent path for adding a service is the config request documented in SKILL.md: propose it, the user approves on their phone and types only the credential. Use this file when the user wants to do it by hand instead, or asks how the dashboard works.
 
 ## Auto tab (default, fastest)
 
@@ -55,4 +55,4 @@ Two headers required at once (`Client-Id` + `Client-Secret`), common with bankin
 | Shopify Admin | `https://<SHOP>.myshopify.com/admin/api/2024-01` |
 | Cool Dogs — Playground (auto-seeded, keyless) | `https://dog.ceo/api` |
 
-Remember that the prefix present in the base URL (`/v1`, `/v0`) is the one you must **not** repeat in the proxied path. See SKILL.md §2.
+Remember that the prefix present in the base URL (`/v1`, `/v0`) is the one you must **not** repeat in the proxied path. See the base URL trap in SKILL.md.

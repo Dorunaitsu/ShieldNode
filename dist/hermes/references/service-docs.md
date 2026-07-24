@@ -68,7 +68,7 @@ If all four fail, save the partial doc with `> _Endpoints to be populated, docum
 | Chat, completion, inference | 30 min |
 | Long batch, training, video or audio generation | 2 h |
 | One-shot lookups (geocoding, currency, weather, CMS reads) | 15 min |
-| Unattended 24/7 cron | Use a scheduled window (SKILL.md §4), or note that the key should stay always-on |
+| Unattended 24/7 cron | Use a scheduled window (see the scheduled windows section of SKILL.md), or note that the key should stay always-on |
 
 If the user already set a per-key default in the dashboard, write that exact value and add *"(matches the dashboard default, agent does not need to send the header)"*. If they are clearly web-only with no mobile app, note that push approval falls back to a plain `403 key_disabled`.
 

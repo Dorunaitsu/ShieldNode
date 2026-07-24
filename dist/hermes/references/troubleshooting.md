@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Deeper diagnosis for calls that fail after the status-code table in SKILL.md §6. Check the base URL trap (§2) first, it explains most unexpected 404s.
+Deeper diagnosis for calls that fail after the status-code table in SKILL.md. Check the base URL trap first, it explains most unexpected 404s.
 
 ## Diagnostic checklist
 

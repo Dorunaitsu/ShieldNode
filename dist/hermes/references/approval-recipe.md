@@ -1,6 +1,6 @@
 # Approval polling recipe
 
-Full implementation of the push-approval loop described in SKILL.md §3. Use it when you are writing code that must survive a disabled key, not when you are making a one-off call.
+Full implementation of the push-approval loop described in the push approval section of SKILL.md. Use it when you are writing code that must survive a disabled key, not when you are making a one-off call.
 
 ```python
 import time
@@ -77,6 +77,6 @@ data = call_with_approval("/chat/completions",
 | Chat, completion, inference (OpenAI, Anthropic, Mistral) | 30 min |
 | Long batch, training, video or audio generation | 2 h |
 | One-shot lookups (geocoding, currency, weather, CMS reads) | 15 min |
-| Unattended 24/7 cron | Use a scheduled window instead (SKILL.md §4), or tell the user to leave the key always-on |
+| Unattended 24/7 cron | Use a scheduled window instead (see the scheduled windows section of SKILL.md), or tell the user to leave the key always-on |
 
 If the user gives you a standing instruction ("for OpenAI ask 30 min by default"), encode it as the header on your first call to that service rather than asking again each time.
