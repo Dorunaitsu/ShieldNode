@@ -41,7 +41,7 @@ curl -H "X-Api-Key: shieldnode_..." "https://proxy.shieldnode.app/_shieldnode/wh
 }
 ```
 
-Read from it: which upstream this key proxies, the configured `base_url` (which decides your path convention, see §2), and whether the next call goes straight through (`active: true`) or triggers approval (`requires_approval: true`). `alias` is the name the user gave this key in the dashboard, so use it when you refer to the key instead of showing any part of its value. `expired: true` means the key is past `expires_at` and no approval will revive it.
+Read from it: which upstream this key proxies, the configured `base_url` (which decides your path convention, see §2), and whether the next call goes straight through (`active: true`) or triggers approval (`requires_approval: true`). `alias` is the label the user put on the key in the dashboard, usually naming the agent it was issued to. It exists for their benefit, not yours: name a key by its **service** when you talk about it, and reach for `alias` only to disambiguate when the user has several keys on the same service. Never quote any part of the key value either way. `expired: true` means the key is past `expires_at`, and no approval revives it.
 
 **Then write the service doc, without being asked.** If the project has no `services/<slug>.md` for the service whoami just named, create one now from the template in [references/service-docs.md](references/service-docs.md). No command, no question to the user: whoami already gave you the service, the base URL and the auth shape. Future sessions read that file instead of deriving it again.
 
