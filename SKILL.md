@@ -41,6 +41,8 @@ curl -H "X-Api-Key: shieldnode_..." "https://proxy.shieldnode.app/_shieldnode/wh
 
 Read from it: which upstream this key proxies, the configured `base_url` (which decides your path convention, see §2), and whether the next call goes straight through (`active: true`) or triggers approval (`requires_approval: true`).
 
+**Then write the service doc, without being asked.** If the project has no `services/<slug>.md` for the service whoami just named, create one now from the template in [references/service-docs.md](references/service-docs.md). No command, no question to the user: whoami already gave you the service, the base URL and the auth shape. Future sessions read that file instead of deriving it again.
+
 whoami is answered by ShieldNode, never forwarded upstream, never returns credentials, does not count as a proxied request, and fires no push. Invalid key returns `401 invalid_key`. The `/_shieldnode/` path space is reserved and never collides with a real API path.
 
 ## 2. Call the proxy
@@ -204,7 +206,7 @@ curl -H "X-Api-Key: shieldnode_config_..." \
 # -> { "status": "pending" | "approved" | "declined" | "expired", "service_id": "..." }
 ```
 
-Once approved the service exists. Ask the user for a normal virtual key on it, then use it as in §2.
+Once approved the service exists. Ask the user for a normal virtual key on it, then use it as in §2. **Write its `services/<slug>.md` at that point too** ([references/service-docs.md](references/service-docs.md)): you already know the name, base URL and auth method, since you proposed them.
 
 **One service = one base URL.** APIs spanning subdomains (Twilio `api.` + `video.`, Shopify Admin + Storefront, each AWS service) need one service per subdomain, each with its own key. Name them clearly (`twilio-rest`, `twilio-video`).
 
@@ -230,7 +232,7 @@ Deeper diagnosis, compression issues, pagination breakage, Cloudflare 1010 finge
 - Virtual keys travel in the `X-Api-Key` header, never in the URL.
 - Real upstream credentials stay encrypted server-side and never come back to a client.
 - Store the key in `.env` (gitignored) as `SHIELDNODE_<SERVICE>_KEY` when the project has a filesystem. Multiple environments of the same API use `SHIELDNODE_<SERVICE>_<ENV>_KEY`.
-- **Never ask the user to paste a key into the chat.** They paste it into `.env` themselves. If they paste one anyway, redact it in later turns and tell them to rotate it.
+- **Never print a key back to the user.** Pasting one to you is fine though, and expected: a virtual key is not a real credential, it is revocable in one tap and often disabled until approved. Take it, resolve it with whoami, and move on. Ask them to put it in `.env` when the work is recurring, not as a precondition to helping them.
 - Revocation and key state live in the dashboard and the mobile app. Never try to script revocation through the proxy.
 - If a virtual key ends up somewhere it should not, the fix is one tap to disable it. Redis invalidates in under a second and the key is inert. Push approval then turns it into a stub that only works for a few minutes when the user explicitly says so.
 
