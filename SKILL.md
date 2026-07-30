@@ -43,7 +43,7 @@ curl -H "X-Api-Key: shieldnode_..." "https://proxy.shieldnode.app/_shieldnode/wh
 
 Read from it: which upstream this key proxies, the configured `base_url` (which decides your path convention, see §2), and whether the next call goes straight through (`active: true`) or triggers approval (`requires_approval: true`). `alias` is the label the user put on the key in the dashboard, usually naming the agent it was issued to. It exists for their benefit, not yours: name a key by its **service** when you talk about it, and reach for `alias` only to disambiguate when the user has several keys on the same service. Never quote any part of the key value either way. `expired: true` means the key is past `expires_at`, and no approval revives it.
 
-**Then write the service doc, without being asked.** If the project has no `services/<slug>.md` for the service whoami just named, create one now from the template in [references/service-docs.md](references/service-docs.md). No command, no question to the user: whoami already gave you the service, the base URL and the auth shape. Future sessions read that file instead of deriving it again.
+**Then write the service doc, without being asked.** The one location for these, used everywhere in this skill, is `skills/shieldnode/services/<slug>.md` relative to the project root, the file named with the service slug in lowercase kebab. If there is no file there for the service whoami just named, create one now from the template in [references/service-docs.md](references/service-docs.md). No command, no question to the user: whoami already gave you the service, the base URL and the auth shape. Future sessions read that file instead of deriving it again.
 
 whoami is answered by ShieldNode, never forwarded upstream, never returns credentials, does not count as a proxied request, and fires no push. Invalid key returns `401 invalid_key`. The `/_shieldnode/` path space is reserved and never collides with a real API path.
 
@@ -208,7 +208,7 @@ curl -H "X-Api-Key: shieldnode_config_..." \
 # -> { "status": "pending" | "approved" | "declined" | "expired", "service_id": "..." }
 ```
 
-Once approved the service exists. Ask the user for a normal virtual key on it, then use it as in §2. **Write its `services/<slug>.md` at that point too** ([references/service-docs.md](references/service-docs.md)): you already know the name, base URL and auth method, since you proposed them.
+Once approved the service exists. Ask the user for a normal virtual key on it, then use it as in §2. **Write its `skills/shieldnode/services/<slug>.md` at that point too** ([references/service-docs.md](references/service-docs.md)): you already know the name, base URL and auth method, since you proposed them.
 
 **One service = one base URL.** APIs spanning subdomains (Twilio `api.` + `video.`, Shopify Admin + Storefront, each AWS service) need one service per subdomain, each with its own key. Name them clearly (`twilio-rest`, `twilio-video`).
 
