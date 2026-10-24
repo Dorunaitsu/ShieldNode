@@ -1,6 +1,6 @@
 ---
 name: shieldnode
-description: Call APIs without the real keys, approved by phone push.
+description: Call APIs through a proxy that holds the real keys.
 version: 1.0.0
 author: Ray Pendragon (RP0-undefined)
 license: MIT
@@ -13,7 +13,7 @@ metadata:
 
 # ShieldNode Skill
 
-Call a user's third-party APIs through the ShieldNode proxy, which holds their real credentials and hands the agent a **virtual key** instead, so the real key never enters the conversation. When a key is disabled, the call returns a structured `403` and the user approves it by push for a bounded window. It does not store or read the user's data, does not manage non-HTTP credentials, and cannot revoke keys: revocation happens in the ShieldNode app.
+Call a user's third-party APIs through the ShieldNode proxy, which holds their real credentials and hands the agent a **virtual key** instead, so the real key never enters the conversation. When a key is disabled, the call returns a structured `403` and the user approves it by push for a bounded window. Request and response bodies pass through the proxy without being stored, and only request metadata (method, path, status, latency, size, IP) is logged for the user's dashboard; the skill does not manage non-HTTP credentials and cannot revoke keys, which happens in the ShieldNode app.
 
 ```
 Hermes --X-Api-Key: shieldnode_...--> proxy.shieldnode.app/{path} --real key--> api.upstream.com/{path}
